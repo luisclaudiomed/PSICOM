@@ -1,0 +1,3924 @@
+Você está me pedindo para implementar um conjunto de módulos de ajuste interativo e refinamento de resposta para o seu sistema PSICOM, que já é um sistema de análise comportamental e psicológica para comunicação profissional. Vou analisar o código existente e propor implementações para cada um dos 10 módulos solicitados.
+
+Primeiro, vamos entender a estrutura do sistema atual e identificar onde esses novos módulos se encaixariam melhor:
+
+O PSICOM é um sistema de análise comportamental e psicológica para otimização de comunicação profissional
+Ele possui capacidades de análise de conversas de texto e áudio (incluindo transcrição e análise emocional de áudio)
+Já implementa análise de atitude, temas, comportamento e indicadores psicológicos
+Tem um sistema de recomendações baseado nessas análises
+Inclui simulação de respostas com base no perfil psicológico
+Os módulos solicitados parecem se concentrar em técnicas mais avançadas para personalizar a comunicação, reforçar comportamentos positivos e adaptar o estilo de comunicação com base no contexto emocional e relacional.
+
+Vou propor a implementação de cada módulo como funções/classes que se integram à estrutura existente do PSICOM. Cada implementação incluirá:
+
+Definição de função/classe
+Lógica para a análise e geração de sugestões
+Integração com o sistema existente
+Exemplos de uso
+Vamos começar com o primeiro módulo: "Perfil de Complexidade Comunicacional".
+
+1. Perfil de Complexidade Comunicacional
+Este módulo avaliará o estilo de comunicação da pessoa com base em diversos fatores como estruturação da linguagem, tempo entre respostas, coesão lógica e variações de tom emocional.
+
+python
+
+Copy
+def analyze_communication_complexity(self, conversation, profile_id):
+    """
+    Analisa a complexidade comunicacional com base em múltiplos fatores
+    """
+    if not conversation or not profile_id:
+        return None
+    
+    # Filtrar mensagens do perfil alvo
+    target_messages = [msg for msg in conversation if msg.get('is_target', False)]
+    
+    if not target_messages:
+        return None
+    
+    # Análise de estruturação da linguagem
+    structure_scores = []
+    for msg in target_messages:
+        # Verificar análise linguística se disponível
+        if 'analysis' in msg and 'linguistic_analysis' in msg['analysis']:
+            complexity = msg['analysis']['linguistic_analysis'].get('style_metrics', {}).get('complexity', 0)
+            structure_scores.append(complexity)
+    
+    # Cálculo de tempo médio entre respostas
+    response_times = []
+    for i, msg in enumerate(conversation):
+        if msg.get('is_target', False) and msg.get('context', {}).get('conversation_state', {}).get('is_response'):
+            response_time = msg['context']['conversation_state'].get('response_time')
+            if response_time is not None:
+                response_times.append(response_time)
+    
+    # Análise de coesão lógica
+    coherence_scores = []
+    for msg in target_messages:
+        # Calcular coesão lógica (uso de conectivos, estrutura de argumentação, etc.)
+        text = msg.get('transcription') if msg.get('content_type') == 'audio' and msg.get('transcription') else msg.get('content', '')
+        
+        # Palavras que indicam coesão lógica
+        coherence_markers = [
+            'porque', 'portanto', 'assim', 'logo', 'então', 'dessa forma', 'por isso',
+            'consequentemente', 'visto que', 'uma vez que', 'já que', 'desde que',
+            'por conseguinte', 'por essa razão', 'desse modo', 'em vista disso'
+        ]
+        
+        words = text.lower().split()
+        # Calcular proporção de marcadores de coesão
+        if words:
+            coherence_score = sum(1 for word in words if any(marker in word for marker in coherence_markers)) / len(words)
+            coherence_scores.append(coherence_score * 10)  # Normalizar para escala 0-10
+    
+    # Análise de variações de tom emocional
+    emotion_variations = []
+    emotions = [msg.get('analysis', {}).get('emotion', {}).get('primary_emotion') for msg in target_messages 
+               if msg.get('analysis', {}).get('emotion', {}).get('primary_emotion')]
+    
+    if emotions:
+        # Calcular quantas emoções diferentes são expressas
+        unique_emotions = len(set(emotions))
+        # Normalizar para escala 0-10
+        emotion_variation = min(10, unique_emotions * 2)
+        emotion_variations.append(emotion_variation)
+    
+    # Calcular pontuações médias
+    avg_structure = sum(structure_scores) / len(structure_scores) if structure_scores else None
+    avg_response_time = sum(response_times) / len(response_times) if response_times else None
+    avg_coherence = sum(coherence_scores) / len(coherence_scores) if coherence_scores else None
+    avg_emotion_variation = sum(emotion_variations) / len(emotion_variations) if emotion_variations else None
+    
+    # Determinar perfil de complexidade
+    complexity_profile = {
+        'structure_level': avg_structure,
+        'response_time': avg_response_time,
+        'coherence_level': avg_coherence,
+        'emotional_variation': avg_emotion_variation,
+    }
+    
+    # Calcular pontuação global de complexidade (0-10)
+    components = [score for score in [avg_structure, avg_coherence, avg_emotion_variation] if score is not None]
+    if components:
+        global_complexity = sum(components) / len(components)
+        complexity_profile['global_complexity'] = global_complexity
+        
+        # Classificar nível de complexidade
+        if global_complexity < 3:
+            complexity_profile['complexity_level'] = 'simples'
+        elif global_complexity < 6:
+            complexity_profile['complexity_level'] = 'moderado'
+        else:
+            complexity_profile['complexity_level'] = 'complexo'
+    
+    # Salvar no perfil para uso posterior
+    if self.profiles and profile_id in self.profiles:
+        if 'communication_patterns' not in self.profiles[profile_id]:
+            self.profiles[profile_id]['communication_patterns'] = {}
+        
+        self.profiles[profile_id]['communication_patterns']['complexity_profile'] = complexity_profile
+        self.update_profile(profile_id, self.profiles[profile_id])
+    
+    return complexity_profile
+Agora, vamos implementar o segundo módulo: "Personalização Afetiva Responsiva"
+
+2. Personalização Afetiva Responsiva
+Este módulo sugere respostas com tom afetivo quando detecta insegurança, retração ou necessidade de acolhimento.
+
+python
+
+Copy
+def generate_affective_response(self, message, context=None, profile_id=None):
+    """
+    Gera sugestões de respostas com tom afetivo quando detecta
+    insegurança, retração ou necessidade de acolhimento.
+    """
+    if not message or not profile_id:
+        return None
+    
+    # Obter o perfil
+    profile = self.profiles.get(profile_id)
+    if not profile:
+        return None
+    
+    # Analisar o conteúdo da mensagem em busca de sinais de insegurança ou retração
+    text = message.get('transcription') if message.get('content_type') == 'audio' and message.get('transcription') else message.get('content', '')
+    
+    # Indicadores de insegurança ou necessidade de acolhimento
+    insecurity_markers = [
+        'não sei', 'talvez', 'acho que', 'será que', 'não tenho certeza', 'estou confuso',
+        'preciso de ajuda', 'estou preocupado', 'estou ansioso', 'tenho medo', 'receio',
+        'desculpe', 'perdão', 'me desculpe', 'sinto muito', 'está difícil',
+        'complicado', 'não estou bem', 'me sinto', 'será'
+    ]
+    
+    # Verificar análise emocional se disponível
+    emotion_indicators = False
+    if (message.get('analysis', {}).get('emotion', {}).get('primary_emotion') in 
+        ['hesitação', 'tensão', 'ansiedade', 'tristeza']):
+        emotion_indicators = True
+    
+    # Verificar atitude se disponível
+    attitude_indicators = False
+    if message.get('analysis', {}).get('attitude', {}).get('primary_attitude') in ['evasiva', 'submissa']:
+        attitude_indicators = True
+    
+    # Verificar indicadores psicológicos se disponível
+    psych_indicators = False
+    vulnerability = message.get('analysis', {}).get('psychological_indicators', {}).get('vulnerability', {}).get('level')
+    if vulnerability in ['média', 'alta']:
+        psych_indicators = True
+    
+    # Verificar palavras de insegurança no texto
+    text_indicators = any(marker in text.lower() for marker in insecurity_markers)
+    
+    # Determinar se há necessidade de resposta afetiva
+    needs_affective_response = emotion_indicators or attitude_indicators or psych_indicators or text_indicators
+    
+    if not needs_affective_response:
+        return None
+    
+    # Ajustar intensidade da resposta afetiva com base no perfil psicológico
+    affective_intensity = 'moderada'  # padrão
+    
+    if 'psychological_profile' in profile:
+        # Verificar se a pessoa tem alta necessidade de aprovação
+        approval_need = profile.get('psychological_profile', {}).get('motivation_factors', {}).get('approval_need', {}).get('level')
+        if approval_need == 'alta':
+            affective_intensity = 'alta'
+        
+        # Verificar abertura emocional
+        emotional_openness = profile.get('psychological_profile', {}).get('emotional_tendencies', {}).get('emotional_openness', {}).get('level')
+        if emotional_openness == 'baixa':
+            affective_intensity = 'sutil'
+        elif emotional_openness == 'alta':
+            affective_intensity = 'alta'
+    
+    # Gerar opções de resposta com base na intensidade
+    affective_responses = {
+        'sutil': [
+            "Entendo o que você está dizendo.",
+            "Estou acompanhando seu raciocínio.",
+            "Vamos trabalhar nisso juntos.",
+            "Agradeço por compartilhar essa informação.",
+            "Sua perspectiva é válida."
+        ],
+        'moderada': [
+            "Compreendo completamente sua posição.",
+            "Valorizo muito sua sinceridade nesse assunto.",
+            "Vamos encontrar uma solução adequada juntos.",
+            "Quero que saiba que sua opinião é importante para mim.",
+            "Estou aqui para ajudar no que for preciso."
+        ],
+        'alta': [
+            "Quero que saiba que estou totalmente ao seu lado nessa situação.",
+            "Valorizo imensamente sua coragem em compartilhar isso comigo.",
+            "Pode contar comigo para encontrarmos o melhor caminho juntos.",
+            "Entendo perfeitamente como você se sente e estou aqui para apoiar.",
+            "Sua preocupação é completamente justificável, vamos resolver isso."
+        ]
+    }
+    
+    # Selecionar respostas da categoria apropriada
+    selected_responses = affective_responses.get(affective_intensity, affective_responses['moderada'])
+    
+    return {
+        'affective_responses': selected_responses,
+        'intensity': affective_intensity,
+        'indicators': {
+            'emotion': emotion_indicators,
+            'attitude': attitude_indicators,
+            'psychological': psych_indicators,
+            'text': text_indicators
+        }
+    }
+Vamos continuar com o terceiro módulo: "Estímulo de Consistência Comportamental"
+
+3. Estímulo de Consistência Comportamental
+Este módulo detecta incongruências entre padrões comunicacionais e linguagem recente, e sugere perguntas que convidem à reflexão.
+
+python
+
+Copy
+def detect_behavioral_inconsistencies(self, message, profile_id):
+    """
+    Detecta incongruências entre padrões históricos de comunicação
+    e comportamento recente, gerando perguntas reflexivas
+    """
+    if not message or not profile_id:
+        return None
+    
+    # Obter o perfil
+    profile = self.profiles.get(profile_id)
+    if not profile:
+        return None
+    
+    # Obter padrões comportamentais históricos
+    historical_patterns = profile.get('behavioral_patterns', {})
+    communication_style = historical_patterns.get('communication_style', {})
+    
+    # Obter análise comportamental da mensagem atual
+    current_behavior = message.get('analysis', {}).get('behavioral_indicators', {})
+    current_dominant = current_behavior.get('dominant_pattern', {}).get('pattern')
+    
+    # Se não houver análise comportamental ou padrões históricos, retornar
+    if not current_dominant or not communication_style:
+        return None
+    
+    # Identificar incongruências significativas
+    inconsistencies = []
+    
+    # Verificar se o comportamento atual é diferente do padrão histórico
+    if current_dominant in communication_style:
+        historical_score = communication_style.get(current_dominant, 0)
+        # Se o comportamento atual é raro historicamente (score < 0.2 ou 20%)
+        if historical_score < 0.2:
+            inconsistencies.append({
+                'type': 'rare_behavior',
+                'behavior': current_dominant,
+                'historical_score': historical_score
+            })
+    
+    # Verificar atitude atual vs. distribuição histórica
+    current_attitude = message.get('analysis', {}).get('attitude', {}).get('primary_attitude')
+    historical_attitudes = profile.get('communication_stats', {}).get('attitude_distribution', {})
+    
+    if current_attitude and historical_attitudes and current_attitude in historical_attitudes:
+        historical_attitude_score = historical_attitudes.get(current_attitude, 0)
+        # Se a atitude atual é rara historicamente (score < 0.2 ou 20%)
+        if historical_attitude_score < 0.2:
+            inconsistencies.append({
+                'type': 'rare_attitude',
+                'attitude': current_attitude,
+                'historical_score': historical_attitude_score
+            })
+    
+    # Verificar emoção atual vs. padrão emocional histórico
+    current_emotion = message.get('analysis', {}).get('emotion', {}).get('primary_emotion')
+    historical_emotions = profile.get('behavioral_patterns', {}).get('emotional_patterns', {})
+    
+    if current_emotion and historical_emotions and current_emotion in historical_emotions:
+        historical_emotion_score = historical_emotions.get(current_emotion, 0)
+        # Se a emoção atual é rara historicamente (score < 0.2 ou 20%)
+        if historical_emotion_score < 0.2:
+            inconsistencies.append({
+                'type': 'rare_emotion',
+                'emotion': current_emotion,
+                'historical_score': historical_emotion_score
+            })
+    
+    # Se não houver inconsistências significativas, retornar
+    if not inconsistencies:
+        return None
+    
+    # Gerar perguntas reflexivas baseadas nas inconsistências
+    reflective_questions = []
+    
+    # Templates de perguntas para cada tipo de inconsistência
+    behavior_questions = {
+        'avoidance': [
+            "O que te faz sentir que precisa ser cauteloso(a) neste assunto?",
+            "Existe algo específico que está causando hesitação?"
+        ],
+        'approval_seeking': [
+            "O que seria ideal para você nesta situação?",
+            "O que te faria sentir mais confortável com esta decisão?"
+        ],
+        'control': [
+            "O que te leva a querer mais estrutura neste momento?",
+            "Existe alguma preocupação específica que motiva essa abordagem?"
+        ],
+        'emotional': [
+            "Parece que este assunto é significativo para você. Gostaria de compartilhar mais sobre isso?",
+            "O que faz este tema despertar esse tipo de resposta em você?"
+        ],
+        'proactive': [
+            "O que motivou essa iniciativa?",
+            "O que te inspirou a tomar essa abordagem?"
+        ],
+        'reactive': [
+            "Como você se sente em relação a essa situação?",
+            "O que seria um resultado ideal para você neste caso?"
+        ]
+    }
+    
+    # Templates para atitudes
+    attitude_questions = {
+        'evasiva': [
+            "Existe algo que está gerando incerteza sobre este assunto?",
+            "O que te ajudaria a sentir mais clareza nesta situação?"
+        ],
+        'submissa': [
+            "O que você realmente preferiria neste caso?",
+            "Se pudesse escolher livremente, qual seria sua opção?"
+        ],
+        'resistente': [
+            "Existe alguma preocupação específica com essa proposta?",
+            "O que seria necessário para tornar essa ideia mais aceitável?"
+        ],
+        'colaborativa': [
+            "O que despertou esse interesse em colaborar neste assunto?",
+            "Como podemos aproveitar melhor essa disposição para colaboração?"
+        ]
+    }
+    
+    # Gerar perguntas para cada inconsistência
+    for inconsistency in inconsistencies:
+        if inconsistency['type'] == 'rare_behavior':
+            behavior = inconsistency['behavior']
+            if behavior in behavior_questions:
+                import random
+                reflective_questions.append(random.choice(behavior_questions[behavior]))
+        
+        elif inconsistency['type'] == 'rare_attitude':
+            attitude = inconsistency['attitude']
+            if attitude in attitude_questions:
+                import random
+                reflective_questions.append(random.choice(attitude_questions[attitude]))
+    
+    # Limitar a 2 perguntas para não sobrecarregar
+    reflective_questions = reflective_questions[:2]
+    
+    return {
+        'inconsistencies': inconsistencies,
+        'reflective_questions': reflective_questions
+    }
+Vamos seguir com o quarto módulo: "Reforço de Participação Colaborativa"
+
+4. Reforço de Participação Colaborativa
+Este módulo sugere frases que despertam senso de contribuição e responsabilidade em situações de indecisão ou afastamento.
+
+python
+
+Copy
+def suggest_collaborative_engagement(self, message, context=None, profile_id=None):
+    """
+    Sugere frases que despertam senso de contribuição, responsabilidade 
+    e envolvimento construtivo em situações de indecisão ou afastamento
+    """
+    if not message or not profile_id:
+        return None
+    
+    # Obter o perfil
+    profile = self.profiles.get(profile_id)
+    if not profile:
+        return None
+    
+    # Detectar sinais de indecisão ou afastamento
+    indecision_signals = False
+    disengagement_signals = False
+    
+    # Verificar comportamento
+    behavior = message.get('analysis', {}).get('behavioral_indicators', {}).get('dominant_pattern', {}).get('pattern')
+    if behavior in ['avoidance', 'reactive']:
+        disengagement_signals = True
+    
+    # Verificar atitude
+    attitude = message.get('analysis', {}).get('attitude', {}).get('primary_attitude')
+    if attitude in ['evasiva', 'submissa']:
+        indecision_signals = True
+    
+    # Analisar conteúdo da mensagem
+    text = message.get('transcription') if message.get('content_type') == 'audio' and message.get('transcription') else message.get('content', '')
+    
+    # Marcadores de indecisão
+    indecision_markers = [
+        'não sei', 'talvez', 'pode ser', 'tanto faz', 'você decide', 'você escolhe',
+        'qualquer um', 'como preferir', 'não tenho preferência', 'tanto faz',
+        'você que sabe', 'não tenho opinião', 'como achar melhor'
+    ]
+    
+    # Marcadores de afastamento
+    disengagement_markers = [
+        'depois vejo', 'mais tarde', 'quando puder', 'não tenho tempo',
+        'estou ocupado', 'verei depois', 'agora não dá', 'não posso agora',
+        'deixa para depois', 'em outro momento'
+    ]
+    
+    if any(marker in text.lower() for marker in indecision_markers):
+        indecision_signals = True
+    
+    if any(marker in text.lower() for marker in disengagement_markers):
+        disengagement_signals = True
+    
+    # Se não houver sinais de indecisão ou afastamento, retornar
+    if not indecision_signals and not disengagement_signals:
+        return None
+    
+    # Gerar sugestões colaborativas
+    collaborative_suggestions = []
+    
+    # Templates para indecisão
+    indecision_templates = [
+        "Sua perspectiva sobre {tema} seria muito valiosa para nossa decisão.",
+        "Sua experiência traz um ângulo importante que enriqueceria esta discussão sobre {tema}.",
+        "Acredito que você tem insights únicos sobre {tema} que poderiam nos ajudar.",
+        "Sua contribuição seria fundamental para chegarmos a uma solução ideal para {tema}.",
+        "Gostaria muito de considerar seu ponto de vista sobre {tema} antes de avançarmos."
+    ]
+    
+    # Templates para afastamento
+    disengagement_templates = [
+        "Sua participação em {tema} faz uma diferença significativa no resultado final.",
+        "O projeto de {tema} se beneficiaria muito com seu envolvimento, mesmo que breve.",
+        "Sua colaboração prévia em {tema} trouxe resultados excelentes que gostaríamos de replicar.",
+        "Percebo que quando você se envolve com {tema}, conseguimos avançar mais rapidamente.",
+        "Seu conhecimento específico seria crucial para resolvermos este aspecto de {tema}."
+    ]
+    
+    # Determinar tema da conversa
+    tema = "este assunto"
+    if message.get('analysis', {}).get('themes'):
+        themes = message['analysis']['themes']
+        if themes:
+            # Usar o primeiro tema encontrado
+            tema = themes[0].replace('#', '')
+    
+    # Verificar contexto anterior se disponível
+    if context and 'previous_messages' in context:
+        for prev_msg in context['previous_messages']:
+            if 'themes' in prev_msg and prev_msg['themes']:
+                tema = prev_msg['themes'][0].replace('#', '')
+                break
+    
+    # Selecionar templates apropriados
+    import random
+    
+    if indecision_signals:
+        template = random.choice(indecision_templates)
+        collaborative_suggestions.append(template.format(tema=tema))
+    
+    if disengagement_signals:
+        template = random.choice(disengagement_templates)
+        collaborative_suggestions.append(template.format(tema=tema))
+    
+    # Personalizar com base no perfil psicológico
+    approval_need = profile.get('psychological_profile', {}).get('motivation_factors', {}).get('approval_need', {}).get('level')
+    
+    if approval_need == 'alta':
+        appreciation_templates = [
+            "Sempre valorizo muito suas contribuições em nossas discussões.",
+            "Suas ideias anteriores foram muito úteis e apreciadas.",
+            "Sua perspectiva única sempre agrega valor às nossas decisões."
+        ]
+        collaborative_suggestions.append(random.choice(appreciation_templates))
+    
+    return {
+        'collaborative_suggestions': collaborative_suggestions,
+        'signals': {
+            'indecision': indecision_signals,
+            'disengagement': disengagement_signals
+        }
+    }
+Vamos implementar o quinto módulo: "Intensificação de Vínculo Baseado em Responsividade"
+
+5. Intensificação de Vínculo Baseado em Responsividade
+Este módulo ajusta a intensidade e frequência de frases afetivas com base na frequência e tipo de resposta recebida.
+
+python
+
+Copy
+def calibrate_affective_engagement(self, profile_id, recent_conversations=None, last_n_days=7):
+    """
+    Ajusta a intensidade e frequência de frases afetivas com base na 
+    responsividade da pessoa ao longo do tempo
+    """
+    if not profile_id or profile_id not in self.profiles:
+        return None
+    
+    profile = self.profiles[profile_id]
+    
+    # Se não houver conversas recentes fornecidas, buscar análises recentes
+    if not recent_conversations:
+        recent_conversations = []
+        
+        # Obter análises dos últimos dias
+        if 'analyses' in profile:
+            # Calcular data limite
+            from datetime import datetime, timedelta
+            cutoff_date = (datetime.now() - timedelta(days=last_n_days)).isoformat()
+            
+            # Filtrar análises recentes
+            recent_analyses = [a for a in profile['analyses'] if a['timestamp'] >= cutoff_date]
+            
+            # Carregar conversas associadas a essas análises
+            for analysis in recent_analyses:
+                conversation_path = os.path.join(
+                    self.config["DATA_DIR"], 
+                    profile_id, 
+                    "conversations", 
+                    f"{analysis['id']}.json"
+                )
+                
+                if os.path.exists(conversation_path):
+                    try:
+                        with open(conversation_path, 'r', encoding='utf-8') as f:
+                            conv = json.load(f)
+                            recent_conversations.extend(conv)
+                    except Exception as e:
+                        logger.error(f"Erro ao carregar conversa {analysis['id']}: {e}")
+    
+    # Se não houver conversas recentes, retornar com valores padrão
+    if not recent_conversations:
+        return {
+            'affective_intensity': 'moderada',
+            'affective_frequency': 0.3,  # 30% das mensagens
+            'reason': 'default_values'
+        }
+    
+    # Filtrar mensagens do perfil alvo
+    target_messages = [msg for msg in recent_conversations if msg.get('is_target', False)]
+    
+    if not target_messages:
+        return {
+            'affective_intensity': 'moderada',
+            'affective_frequency': 0.3,
+            'reason': 'no_target_messages'
+        }
+    
+    # Calcular métricas de responsividade
+    
+    # 1. Tempo médio de resposta
+    response_times = []
+    for msg in target_messages:
+        if msg.get('context', {}).get('conversation_state', {}).get('is_response'):
+            response_time = msg['context']['conversation_state'].get('response_time')
+            if response_time is not None:
+                response_times.append(response_time)
+    
+    avg_response_time = sum(response_times) / len(response_times) if response_times else None
+    
+    # 2. Taxa de resposta (quantas mensagens receberam resposta)
+    # Isso requer uma análise mais detalhada da sequência de mensagens
+    messages_requiring_response = 0
+    messages_with_response = 0
+    
+    for i, msg in enumerate(recent_conversations):
+        # Se a mensagem não é do alvo e não é a última da conversa
+        if not msg.get('is_target', False) and i < len(recent_conversations) - 1:
+            messages_requiring_response += 1
+            
+            # Verificar se a próxima mensagem é uma resposta do alvo
+            next_msg = recent_conversations[i + 1]
+            if next_msg.get('is_target', False):
+                messages_with_response += 1
+    
+    response_rate = messages_with_response / messages_requiring_response if messages_requiring_response > 0 else 0
+    
+    # 3. Análise de atitudes e emoções nas respostas
+    positive_attitudes = ['colaborativa']
+    negative_attitudes = ['resistente', 'evasiva']
+    
+    attitude_counts = {'positive': 0, 'negative': 0, 'neutral': 0}
+    
+    for msg in target_messages:
+        attitude = msg.get('analysis', {}).get('attitude', {}).get('primary_attitude')
+        if attitude in positive_attitudes:
+            attitude_counts['positive'] += 1
+        elif attitude in negative_attitudes:
+            attitude_counts['negative'] += 1
+        else:
+            attitude_counts['neutral'] += 1
+    
+    total_attitudes = sum(attitude_counts.values())
+    positive_attitude_rate = attitude_counts['positive'] / total_attitudes if total_attitudes > 0 else 0
+    negative_attitude_rate = attitude_counts['negative'] / total_attitudes if total_attitudes > 0 else 0
+    
+    # 4. Detectar padrões de abertura emocional
+    emotion_openness = profile.get('psychological_profile', {}).get('emotional_tendencies', {}).get('emotional_openness', {}).get('level', 'média')
+    
+    # Calcular calibração de vínculo afetivo
+    
+    # Intensidade base com base na abertura emocional
+    base_intensity = {
+        'baixa': 'sutil',
+        'média': 'moderada',
+        'alta': 'alta'
+    }.get(emotion_openness, 'moderada')
+    
+    # Ajustar com base na taxa de atitudes positivas/negativas
+    if positive_attitude_rate > 0.6:  # Mais de 60% de atitudes positivas
+        # Aumentar intensidade se base não for alta
+        if base_intensity != 'alta':
+            intensity = 'moderada' if base_intensity == 'sutil' else 'alta'
+        else:
+            intensity = base_intensity
+    elif negative_attitude_rate > 0.6:  # Mais de 60% de atitudes negativas
+        # Diminuir intensidade se base não for sutil
+        if base_intensity != 'sutil':
+            intensity = 'sutil' if base_intensity == 'alta' else 'moderada'
+        else:
+            intensity = base_intensity
+    else:
+        # Manter intensidade base
+        intensity = base_intensity
+    
+    # Frequência de frases afetivas
+    # Base: 30% das mensagens
+    base_frequency = 0.3
+    
+    # Ajustar com base na taxa de resposta
+    if response_rate > 0.8:  # Taxa de resposta alta (> 80%)
+        frequency = base_frequency * 1.5  # Aumentar frequência
+    elif response_rate < 0.5:  # Taxa de resposta baixa (< 50%)
+        frequency = base_frequency * 0.7  # Diminuir frequência
+    else:
+        frequency = base_frequency
+    
+    # Limitar entre 10% e 80%
+    frequency = max(0.1, min(0.8, frequency))
+    
+    # Construir resultado
+    result = {
+        'affective_intensity': intensity,
+        'affective_frequency': frequency,
+        'metrics': {
+            'avg_response_time': avg_response_time,
+            'response_rate': response_rate,
+            'positive_attitude_rate': positive_attitude_rate,
+            'negative_attitude_rate': negative_attitude_rate,
+            'emotional_openness': emotion_openness
+        },
+        'reason': 'calibrated'
+    }
+    
+    # Atualizar perfil para futuras referências
+    if 'communication_patterns' not in profile:
+        profile['communication_patterns'] = {}
+    
+    profile['communication_patterns']['affective_calibration'] = {
+        'intensity': intensity,
+        'frequency': frequency,
+        'last_updated': datetime.now().isoformat()
+    }
+    
+    self.update_profile(profile_id, profile)
+    
+    return result
+Vamos implementar o sexto módulo: "Reconhecimento Direcionado por Mérito"
+
+6. Reconhecimento Direcionado por Mérito
+Este módulo oferece reconhecimento verbal apenas quando certos padrões positivos são detectados.
+
+python
+
+Copy
+def generate_merit_based_recognition(self, message, profile_id):
+    """
+    Gera frases de reconhecimento apenas quando padrões positivos genuínos são detectados,
+    evitando reforço automático de comportamentos neutros
+    """
+    if not message or not profile_id:
+        return None
+    
+    # Obter o perfil
+    profile = self.profiles.get(profile_id)
+    if not profile:
+        return None
+    
+    # Verificar se a mensagem contém padrões meritórios
+    merit_indicators = []
+    
+    # 1. Comportamento colaborativo ou proativo
+    behavior = message.get('analysis', {}).get('behavioral_indicators', {}).get('dominant_pattern', {}).get('pattern')
+    if behavior in ['proactive', 'collaborative']:
+        merit_indicators.append({
+            'type': 'behavior',
+            'value': behavior
+        })
+    
+    # 2. Atitude colaborativa
+    attitude = message.get('analysis', {}).get('attitude', {}).get('primary_attitude')
+    attitude_strength = message.get('analysis', {}).get('attitude', {}).get('strength', 0)
+    
+    if attitude == 'colaborativa' and attitude_strength > 7:  # Forte atitude colaborativa
+        merit_indicators.append({
+            'type': 'attitude',
+            'value': attitude,
+            'strength': attitude_strength
+        })
+    
+    # 3. Respostas rápidas (menor que a média histórica)
+    response_time = message.get('context', {}).get('conversation_state', {}).get('response_time')
+    avg_historical_time = profile.get('communication_stats', {}).get('avg_response_time')
+    
+    if response_time and avg_historical_time and response_time < (avg_historical_time * 0.7):
+        # Resposta 30% mais rápida que a média
+        merit_indicators.append({
+            'type': 'response_time',
+            'value': response_time,
+            'historical_avg': avg_historical_time
+        })
+    
+    # 4. Expressão de ideias construtivas ou soluções
+    text = message.get('transcription') if message.get('content_type') == 'audio' and message.get('transcription') else message.get('content', '')
+    
+    # Marcadores de soluções construtivas
+    solution_markers = [
+        'sugerir', 'sugiro', 'propor', 'proponho', 'ideia', 'solução', 'resolver',
+        'alternativa', 'opção', 'posso fazer', 'poderíamos', 'vamos', 'podemos',
+        'resolvi', 'organizei', 'preparei', 'facilitar', 'melhorar', 'otimizar'
+    ]
+    
+    if any(marker in text.lower() for marker in solution_markers):
+        merit_indicators.append({
+            'type': 'constructive_solution',
+            'value': True
+        })
+    
+    # 5. Superação de comportamentos anteriormente desafiadores
+    if 'behavioral_patterns' in profile:
+        historical_challenges = []
+        
+        # Identificar comportamentos historicamente problemáticos
+        comm_style = profile.get('behavioral_patterns', {}).get('communication_style', {})
+        if comm_style:
+            for pattern, value in comm_style.items():
+                if pattern in ['avoidance', 'reactive', 'approval_seeking'] and value > 0.3:
+                    historical_challenges.append(pattern)
+        
+        # Verificar se o comportamento atual é diferente dos desafios históricos
+        if behavior and behavior not in historical_challenges and historical_challenges:
+            merit_indicators.append({
+                'type': 'pattern_improvement',
+                'value': behavior,
+                'historical_challenges': historical_challenges
+            })
+    
+    # Se não houver indicadores meritórios significativos, não oferecer reconhecimento
+    if not merit_indicators:
+        return None
+    
+    # Gerar reconhecimento personalizado
+    recognition_phrases = []
+    
+    # Templates de reconhecimento por tipo de mérito
+    merit_templates = {
+        'behavior': [
+            "Sua abordagem proativa nesta situação é realmente admirável.",
+            "Aprecio muito sua disposição para colaborar de forma tão efetiva.",
+            "A maneira como você abordou este assunto demonstra excelente iniciativa."
+        ],
+        'attitude': [
+            "Sua atitude colaborativa faz uma diferença significativa em nossos resultados.",
+            "É notável como sua abordagem construtiva facilita o progresso deste projeto.",
+            "Valorizo muito sua disposição para encontrar soluções em vez de apenas apontar problemas."
+        ],
+        'response_time': [
+            "Agradeço sua resposta rápida, que nos permitiu avançar com agilidade.",
+            "Sua prontidão em responder a esta questão foi extremamente útil.",
+            "A velocidade com que você atendeu a esta solicitação fez toda a diferença."
+        ],
+        'constructive_solution': [
+            "Sua sugestão traz exatamente o tipo de perspectiva construtiva que precisávamos.",
+            "A solução que você propôs demonstra uma compreensão profunda da situação.",
+            "A ideia que você compartilhou é exatamente o tipo de contribuição que agrega valor real."
+        ],
+        'pattern_improvement': [
+            "Tenho notado uma evolução significativa em sua abordagem que está trazendo resultados excelentes.",
+            "A maneira como você tem lidado com estes desafios recentemente demonstra um crescimento impressionante.",
+            "É notável como sua nova abordagem está criando um impacto positivo em todo o processo."
+        ]
+    }
+    
+    # Selecionar reconhecimentos para cada indicador meritório (limitado a 2)
+    import random
+    
+    selected_merit_types = []
+    for indicator in merit_indicators[:2]:  # Limitar a 2 indicadores
+        merit_type = indicator['type']
+        
+        # Evitar repetição de tipos
+        if merit_type in selected_merit_types:
+            continue
+        
+        selected_merit_types.append(merit_type)
+        
+        if merit_type in merit_templates:
+            recognition_phrases.append(random.choice(merit_templates[merit_type]))
+    
+    # Garantir que temos no máximo 2 frases
+    recognition_phrases = recognition_phrases[:2]
+    
+    return {
+        'recognition_phrases': recognition_phrases,
+        'merit_indicators': merit_indicators
+    }
+Vamos implementar o sétimo módulo: "Realce de Expectativas Construtivas por Referência Positiva"
+
+7. Realce de Expectativas Construtivas por Referência Positiva
+Este módulo gera comparações brandas e referências a comportamentos de pares ou experiências passadas.
+
+python
+
+Copy
+def generate_positive_references(self, profile_id, current_context):
+    """
+    Gera comparações brandas e referências a comportamentos passados positivos
+    ou comportamentos de pares para inspirar envolvimento ativo
+    """
+    if not profile_id or not current_context:
+        return None
+    
+    # Obter o perfil
+    profile = self.profiles.get(profile_id)
+    if not profile:
+        return None
+    
+    # Extrair tema atual do contexto
+    current_theme = None
+    if 'themes' in current_context and current_context['themes']:
+        current_theme = current_context['themes'][0].replace('#', '')
+    
+    # Buscar análises anteriores para encontrar exemplos positivos
+    positive_examples = []
+    
+    # Se o perfil tem análises anteriores
+    if 'analyses' in profile:
+        # Buscar exemplos de comportamentos positivos anteriores da própria pessoa
+        for analysis in profile['analyses']:
+            # Carregar conversa associada à análise
+            conversation_path = os.path.join(
+                self.config["DATA_DIR"], 
+                profile_id, 
+                "conversations", 
+                f"{analysis['id']}.json"
+            )
+            
+            if not os.path.exists(conversation_path):
+                continue
+            
+            try:
+                with open(conversation_path, 'r', encoding='utf-8') as f:
+                    conversation = json.load(f)
+                
+                # Filtrar mensagens do perfil alvo
+                target_messages = [msg for msg in conversation if msg.get('is_target', False)]
+                
+                for msg in target_messages:
+                    # Verificar se a mensagem tem comportamento positivo
+                    behavior = msg.get('analysis', {}).get('behavioral_indicators', {}).get('dominant_pattern', {}).get('pattern')
+                    attitude = msg.get('analysis', {}).get('attitude', {}).get('primary_attitude')
+                    
+                    is_positive = (behavior in ['proactive', 'collaborative']) or (attitude == 'colaborativa')
+                    
+                    # Verificar se tem o mesmo tema (se aplicável)
+                    has_matching_theme = False
+                    if not current_theme:  # Se não há tema específico, qualquer exemplo serve
+                        has_matching_theme = True
+                    elif 'themes' in msg.get('analysis', {}):
+                        msg_themes = [t.replace('#', '') for t in msg['analysis']['themes']]
+                        has_matching_theme = current_theme in msg_themes
+                    
+                    if is_positive and has_matching_theme:
+                        # Extrair conteúdo da mensagem
+                        content = msg.get('transcription') if msg.get('content_type') == 'audio' and msg.get('transcription') else msg.get('content', '')
+                        
+                        # Adicionar exemplo positivo
+                        positive_examples.append({
+                            'type': 'self_reference',
+                            'content': content,
+                            'behavior': behavior,
+                            'attitude': attitude,
+                            'theme': current_theme if has_matching_theme else None,
+                            'timestamp': msg.get('datetime')
+                        })
+            
+            except Exception as e:
+                logger.error(f"Erro ao carregar conversa {analysis['id']}: {e}")
+    
+    # Limitar a 3 exemplos mais recentes
+    positive_examples = sorted(positive_examples, key=lambda x: x.get('timestamp', ''), reverse=True)[:3]
+    
+    # Se não há exemplos suficientes, podemos usar exemplos genéricos
+    if len(positive_examples) < 2:
+        generic_examples = [
+            {
+                'type': 'generic_reference',
+                'behavior': 'proactive',
+                'theme': current_theme,
+                'description': f"contribuição proativa em {current_theme or 'projetos anteriores'}"
+            },
+            {
+                'type': 'generic_reference',
+                'behavior': 'collaborative',
+                'theme': current_theme,
+                'description': f"atitude colaborativa em {current_theme or 'situações semelhantes'}"
+            },
+            {
+                'type': 'peer_reference',
+                'behavior': 'proactive',
+                'theme': current_theme,
+                'description': f"abordagem construtiva utilizada por outros colegas em {current_theme or 'situações semelhantes'}"
+            }
+        ]
+        
+        # Adicionar exemplos genéricos se necessário
+        while len(positive_examples) < 2:
+            import random
+            positive_examples.append(random.choice(generic_examples))
+    
+    # Gerar frases de referência positiva
+    reference_phrases = []
+    
+    # Templates para cada tipo de referência
+    self_reference_templates = [
+        "Como você demonstrou anteriormente em {theme}, sua abordagem {behavior_adj} trouxe resultados excelentes.",
+        "Sua capacidade de {behavior_verb} que você mostrou em ocasiões anteriores relacionadas a {theme} foi muito eficaz.",
+        "A maneira {behavior_adj} como você lidou com {theme} no passado foi um excelente exemplo que poderíamos aplicar agora."
+    ]
+    
+    generic_reference_templates = [
+        "Uma abordagem {behavior_adj} como a que você já demonstrou em outros momentos seria valiosa nesta situação de {theme}.",
+        "O tipo de {behavior_noun} que tem funcionado bem em situações de {theme} poderia ser aplicado aqui.",
+        "Sua habilidade para {behavior_verb} seria particularmente útil neste contexto de {theme}."
+    ]
+    
+    peer_reference_templates = [
+        "Temos visto como uma abordagem {behavior_adj} tem sido eficaz para outros em situações de {theme}.",
+        "O tipo de {behavior_noun} que tem gerado resultados positivos em contextos semelhantes de {theme} envolve {behavior_verb}.",
+        "Colegas que enfrentaram desafios semelhantes em {theme} conseguiram avanços significativos ao {behavior_verb}."
+    ]
+    
+    # Mapeamento de comportamentos para adjetivos, verbos e substantivos
+    behavior_language = {
+        'proactive': {
+            'adj': 'proativa',
+            'verb': 'tomar iniciativa',
+            'noun': 'proatividade'
+        },
+        'collaborative': {
+            'adj': 'colaborativa',
+            'verb': 'trabalhar em conjunto',
+            'noun': 'colaboração'
+        },
+    }
+    
+    # Atitudes
+    attitude_language = {
+        'colaborativa': {
+            'adj': 'cooperativa',
+            'verb': 'cooperar',
+            'noun': 'cooperação'
+        }
+    }
+    
+    # Gerar frases de referência
+    import random
+    
+    for example in positive_examples[:2]:  # Limitar a 2 referências
+        template = None
+        
+        if example['type'] == 'self_reference':
+            template = random.choice(self_reference_templates)
+            
+            # Determinar linguagem apropriada
+            if example['behavior'] in behavior_language:
+                language = behavior_language[example['behavior']]
+            elif example['attitude'] in attitude_language:
+                language = attitude_language[example['attitude']]
+            else:
+                language = {
+                    'adj': 'eficaz',
+                    'verb': 'abordar questões',
+                    'noun': 'abordagem'
+                }
+            
+            theme = example['theme'] or "situações anteriores"
+            
+            reference_phrases.append(template.format(
+                theme=theme,
+                behavior_adj=language['adj'],
+                behavior_verb=language['verb'],
+                behavior_noun=language['noun']
+            ))
+            
+        elif example['type'] == 'generic_reference':
+            template = random.choice(generic_reference_templates)
+            
+            language = behavior_language.get(example['behavior'], {
+                'adj': 'eficaz',
+                'verb': 'abordar questões',
+                'noun': 'abordagem'
+            })
+            
+            theme = example['theme'] or "contextos semelhantes"
+            
+            reference_phrases.append(template.format(
+                theme=theme,
+                behavior_adj=language['adj'],
+                behavior_verb=language['verb'],
+                behavior_noun=language['noun']
+            ))
+            
+        elif example['type'] == 'peer_reference':
+            template = random.choice(peer_reference_templates)
+            
+            language = behavior_language.get(example['behavior'], {
+                'adj': 'eficaz',
+                'verb': 'abordar questões de forma colaborativa',
+                'noun': 'abordagem'
+            })
+            
+            theme = example['theme'] or "contextos semelhantes"
+            
+            reference_phrases.append(template.format(
+                theme=theme,
+                behavior_adj=language['adj'],
+                behavior_verb=language['verb'],
+                behavior_noun=language['noun']
+            ))
+    
+    return {
+        'reference_phrases': reference_phrases,
+        'examples_found': len(positive_examples)
+    }
+Vamos implementar o oitavo módulo: "Reforço de Referências Positivas Anteriores"
+
+8. Reforço de Referências Positivas Anteriores
+Este módulo repete de forma natural frases que evocam experiências prévias bem-sucedidas.
+
+python
+
+Copy
+def reinforce_positive_experiences(self, profile_id, current_context):
+    """
+    Identifica e reforça experiências positivas anteriores para consolidar 
+    padrões positivos e fortalecer a confiança
+    """
+    if not profile_id or not current_context:
+        return None
+    
+    # Obter o perfil
+    profile = self.profiles.get(profile_id)
+    if not profile:
+        return None
+    
+    # Extrair tema atual do contexto
+    current_theme = None
+    if 'themes' in current_context and current_context['themes']:
+        current_theme = current_context['themes'][0].replace('#', '')
+    
+    # Buscar interações anteriores positivas
+    positive_experiences = []
+    
+    # Verificar análises anteriores
+    if 'analyses' in profile:
+        # Até 10 análises mais recentes, em ordem reversa
+        for analysis in sorted(profile['analyses'], key=lambda x: x['timestamp'], reverse=True)[:10]:
+            # Verificar se há menções positivas nas recomendações da análise
+            if 'summary' in analysis and 'recommendations' in analysis['summary']:
+                for rec in analysis['summary']['recommendations'].get('general', []):
+                    # Buscar frases que mencionam experiências positivas
+                    if any(term in rec.lower() for term in ['sucesso', 'eficaz', 'positiv', 'bem-sucedid', 'funcionou bem', 'resultado excelente']):
+                        positive_experiences.append({
+                            'type': 'recommendation',
+                            'content': rec,
+                            'timestamp': analysis['timestamp'],
+                            'reference': f"análise de {datetime.fromisoformat(analysis['timestamp']).strftime('%d/%m/%Y')}"
+                        })
+            
+            # Buscar interações específicas positivas nas conversas
+            conversation_path = os.path.join(
+                self.config["DATA_DIR"], 
+                profile_id, 
+                "conversations", 
+                f"{analysis['id']}.json"
+            )
+            
+            if not os.path.exists(conversation_path):
+                continue
+            
+            try:
+                with open(conversation_path, 'r', encoding='utf-8') as f:
+                    conversation = json.load(f)
+                
+                # Buscar contextos onde houve reconhecimento positivo
+                for i, msg in enumerate(conversation):
+                    # Se não é mensagem do alvo e contém termos de reconhecimento
+                    if not msg.get('is_target', False):
+                        text = msg.get('content', '').lower()
+                        
+                        # Termos que indicam reconhecimento
+                        if any(term in text for term in ['parabéns', 'excelente', 'ótimo trabalho', 'muito bom', 'bem feito', 'agradeço']):
+                            # Verificar se há resposta do alvo
+                            if i < len(conversation) - 1 and conversation[i+1].get('is_target', False):
+                                next_msg = conversation[i+1]
+                                
+                                # Extrair tema se disponível
+                                msg_theme = None
+                                if 'analysis' in next_msg and 'themes' in next_msg['analysis'] and next_msg['analysis']['themes']:
+                                    msg_theme = next_msg['analysis']['themes'][0].replace('#', '')
+                                
+                                # Só adicionar se o tema atual não for especificado ou se combinar
+                                if not current_theme or not msg_theme or current_theme == msg_theme:
+                                    positive_experiences.append({
+                                        'type': 'interaction',
+                                        'content': f"reconhecimento recebido em conversa sobre {msg_theme or 'assunto anterior'}",
+                                        'context': msg.get('content'),
+                                        'response': next_msg.get('content') or next_msg.get('transcription', ''),
+                                        'timestamp': next_msg.get('datetime'),
+                                        'theme': msg_theme
+                                    })
+            
+            except Exception as e:
+                logger.error(f"Erro ao carregar conversa {analysis['id']}: {e}")
+    
+    # Se não houver experiências positivas específicas, usar referências gerais
+    if not positive_experiences:
+        # Verificar se há atitudes/comportamentos positivos no perfil
+        behavioral_patterns = profile.get('behavioral_patterns', {})
+        communication_style = behavioral_patterns.get('communication_style', {})
+        
+        if communication_style:
+            # Verificar se há comportamentos positivos significativos
+            if communication_style.get('proactive', 0) > 0.3 or communication_style.get('collaborative', 0) > 0.3:
+                positive_experiences.append({
+                    'type': 'profile_pattern',
+                    'content': "tendência para abordagens proativas e colaborativas",
+                    'behavior': 'proactive' if communication_style.get('proactive', 0) > communication_style.get('collaborative', 0) else 'collaborative'
+                })
+            
+        # Verificar atitudes no histórico
+        attitude_dist = profile.get('communication_stats', {}).get('attitude_distribution', {})
+        if attitude_dist and attitude_dist.get('colaborativa', 0) > 0.3:
+            positive_experiences.append({
+                'type': 'profile_pattern',
+                'content': "histórico de atitudes colaborativas",
+                'attitude': 'colaborativa'
+            })
+    
+    # Se ainda não houver experiências positivas, não podemos fornecer reforço
+    if not positive_experiences:
+        return None
+    
+    # Limitar a 2 experiências mais recentes/relevantes
+    # Priorizar experiências relacionadas ao tema atual
+    themed_experiences = [exp for exp in positive_experiences if exp.get('theme') == current_theme]
+    
+    if themed_experiences:
+        selected_experiences = themed_experiences[:2]
+    else:
+        # Ordenar por recência
+        sorted_experiences = sorted(positive_experiences, key=lambda x: x.get('timestamp', ''), reverse=True)
+        selected_experiences = sorted_experiences[:2]
+    
+    # Gerar frases de reforço
+    reinforcement_phrases = []
+    
+    # Templates para cada tipo de experiência
+    recommendation_templates = [
+        "Como observamos anteriormente, {content}",
+        "Retomando o que analisamos antes, {content}",
+        "Em sintonia com o que já havíamos identificado, {content}"
+    ]
+    
+    interaction_templates = [
+        "Em situação anterior, sua abordagem para {theme} recebeu reconhecimento positivo.",
+        "Como demonstrado anteriormente em conversa sobre {theme}, sua contribuição foi muito bem recebida.",
+        "Retomando um ponto forte seu: em discussão anterior sobre {theme}, sua perspectiva trouxe valor significativo."
+    ]
+    
+    profile_templates = [
+        "Seu histórico de {content} é um diferencial importante que podemos aproveitar neste momento.",
+        "Sua tendência natural para {content} pode ser particularmente valiosa nesta situação.",
+        "Algo que tenho observado consistentemente é sua capacidade para {content}, que seria muito útil agora."
+    ]
+    
+    import random
+    
+    for experience in selected_experiences:
+        exp_type = experience['type']
+        
+        if exp_type == 'recommendation':
+            template = random.choice(recommendation_templates)
+            content = experience['content'].lower()
+            # Reescrever para terceira pessoa se estiver em segunda
+            content = content.replace("você deve", "seria benéfico")
+            content = content.replace("use ", "usar ")
+            reinforcement_phrases.append(template.format(content=content))
+            
+        elif exp_type == 'interaction':
+            template = random.choice(interaction_templates)
+            theme = experience.get('theme', 'um assunto importante')
+            reinforcement_phrases.append(template.format(theme=theme))
+            
+        elif exp_type == 'profile_pattern':
+            template = random.choice(profile_templates)
+            content = experience['content']
+            reinforcement_phrases.append(template.format(content=content))
+    
+    return {
+        'reinforcement_phrases': reinforcement_phrases,
+        'experiences_found': len(positive_experiences)
+    }
+Vamos implementar o nono módulo: "Alternância de Estilos de Comunicação Contextual"
+
+9. Alternância de Estilos de Comunicação Contextual
+Este módulo permite alternar estilos de linguagem para adaptar-se ao contexto emocional e relacional.
+
+python
+
+Copy
+def adapt_communication_style(self, message, profile_id, previous_interactions=None):
+    """
+    Determina o estilo de comunicação mais adequado com base no contexto
+    emocional e relacional da conversa
+    """
+    if not message or not profile_id:
+        return None
+    
+    # Obter o perfil
+    profile = self.profiles.get(profile_id)
+    if not profile:
+        return None
+    
+    # Definir estilos de comunicação disponíveis
+    communication_styles = {
+        'direto': {
+            'description': 'Comunicação clara e objetiva, com instruções e informações diretas',
+            'characteristics': ['conciso', 'objetivo', 'estruturado', 'eficiente', 'prático'],
+            'punctuation': 'moderada',
+            'sentence_length': 'curta',
+            'emotional_terms': 'poucos',
+            'examples': [
+                "Precisamos definir os próximos passos. Sugiro que {ação_principal}.",
+                "Para avançarmos, é necessário {ação_principal}. Podemos começar hoje?",
+                "Vamos focar na solução. O mais eficiente seria {ação_principal}."
+            ]
+        },
+        'acolhedor': {
+            'description': 'Comunicação empática e compreensiva, priorizando o bem-estar emocional',
+            'characteristics': ['empático', 'compreensivo', 'caloroso', 'receptivo', 'paciente'],
+            'punctuation': 'suave',
+            'sentence_length': 'média',
+            'emotional_terms': 'frequentes',
+            'examples': [
+                "Entendo como você se sente em relação a isso. Talvez possamos {ação_principal} de um jeito que funcione para todos nós.",
+                "Quero que saiba que estou aqui para apoiar. Podemos trabalhar juntos para {ação_principal}.",
+                "Compreendo suas preocupações. Vamos encontrar um caminho para {ação_principal} que considere suas necessidades."
+            ]
+        },
+        'técnico': {
+            'description': 'Comunicação precisa com terminologia específica e detalhamento',
+            'characteristics': ['preciso', 'detalhado', 'analítico', 'especializado', 'informativo'],
+            'punctuation': 'formal',
+            'sentence_length': 'longa',
+            'emotional_terms': 'raros',
+            'examples': [
+                "De acordo com nossa análise, o procedimento mais adequado seria {ação_principal}, conforme as especificações técnicas.",
+                "Os dados indicam que devemos implementar {ação_principal}, seguindo o protocolo estabelecido.",
+                "A metodologia recomendada para este caso específico consiste em {ação_principal}, garantindo conformidade com os parâmetros."
+            ]
+        },
+        'colaborativo': {
+            'description': 'Comunicação participativa, incentivando contribuições e decisões conjuntas',
+            'characteristics': ['inclusivo', 'participativo', 'construtivo', 'flexível', 'aberto'],
+            'punctuation': 'moderada',
+            'sentence_length': 'média',
+            'emotional_terms': 'moderados',
+            'examples': [
+                "Poderíamos juntos desenvolver uma abordagem para {ação_principal}. O que você acha?",
+                "Que tal trabalharmos em conjunto para {ação_principal}? Suas ideias seriam muito valiosas.",
+                "Se unirmos nossas perspectivas, acredito que conseguiremos {ação_principal} de forma mais eficaz."
+            ]
+        },
+        'motivador': {
+            'description': 'Comunicação entusiasta e inspiradora, com foco em possibilidades e crescimento',
+            'characteristics': ['entusiasta', 'inspirador', 'energético', 'positivo', 'orientado a futuro'],
+            'punctuation': 'expressiva',
+            'sentence_length': 'média',
+            'emotional_terms': 'abundantes',
+            'examples': [
+                "Tenho certeza de que você conseguirá {ação_principal} com excelência! Seu potencial é incrível.",
+                "Esta é uma oportunidade fantástica para {ação_principal}! Estou entusiasmado para ver os resultados.",
+                "Vamos transformar este desafio em conquista! Juntos podemos {ação_principal} e alcançar novos patamares."
+            ]
+        }
+    }
+    
+    # Analisar o contexto para determinar o estilo mais apropriado
+    
+    # 1. Estado emocional atual
+    emotional_state = None
+    if message.get('analysis', {}).get('emotion', {}).get('primary_emotion'):
+        emotion = message['analysis']['emotion']['primary_emotion']
+        
+        # Mapear emoções para estados que influenciam o estilo
+        if emotion in ['hesitação', 'ansiedade', 'tensão', 'tristeza']:
+            emotional_state = 'vulnerável'
+        elif emotion in ['frustração', 'irritação']:
+            emotional_state = 'resistente'
+        elif emotion in ['entusiasmo', 'confiança', 'contentamento']:
+            emotional_state = 'receptivo'
+        else:
+            emotional_state = 'neutro'
+    
+    # 2. Comportamento atual
+    behavior_state = None
+    behavior = message.get('analysis', {}).get('behavioral_indicators', {}).get('dominant_pattern', {}).get('pattern')
+    
+    if behavior:
+        if behavior in ['avoidance', 'conflict', 'reactive']:
+            behavior_state = 'defensivo'
+        elif behavior in ['proactive', 'collaborative']:
+            behavior_state = 'engajado'
+        elif behavior in ['control', 'status_focused']:
+            behavior_state = 'assertivo'
+        elif behavior in ['approval_seeking', 'emotional']:
+            behavior_state = 'afiliativo'
+        else:
+            behavior_state = 'neutro'
+    
+    # 3. Atitude atual
+    attitude_state = None
+    attitude = message.get('analysis', {}).get('attitude', {}).get('primary_attitude')
+    
+    if attitude:
+        if attitude in ['evasiva', 'submissa']:
+            attitude_state = 'retraído'
+        elif attitude in ['colaborativa']:
+            attitude_state = 'cooperativo'
+        elif attitude in ['resistente', 'autoritária']:
+            attitude_state = 'resistente'
+        else:
+            attitude_state = 'neutro'
+    
+    # 4. Contexto do tema
+    theme_context = None
+    if message.get('analysis', {}).get('themes'):
+        themes = message['analysis']['themes']
+        
+        # Determinar contexto baseado no tema
+        if any(theme in ['#plantao', '#documentacao'] for theme in themes):
+            theme_context = 'profissional'
+        elif any(theme in ['#problema', '#pagamento'] for theme in themes):
+            theme_context = 'sensível'
+        elif any(theme in ['#reconhecimento', '#pessoal'] for theme in themes):
+            theme_context = 'pessoal'
+        else:
+            theme_context = 'geral'
+    
+    # 5. Histórico recente (se disponível)
+    recent_style = None
+    if previous_interactions and len(previous_interactions) > 0:
+        # Verificar se houve resposta positiva a um estilo específico
+        for interaction in previous_interactions:
+            # Se a interação tem um estilo marcado e teve resposta positiva
+            if 'communication_style' in interaction and 'response_type' in interaction:
+                if interaction['response_type'] == 'positive':
+                    recent_style = interaction['communication_style']
+                    break
+    
+    # Determinar o estilo mais apropriado com base nos fatores analisados
+    
+    # Matriz de decisão: mapeia combinações de estados para estilos recomendados
+    style_matrix = {
+        # emotional_state + behavior_state -> estilo
+        ('vulnerável', 'defensivo'): 'acolhedor',
+        ('vulnerável', 'engajado'): 'colaborativo',
+        ('vulnerável', 'assertivo'): 'acolhedor',
+        ('vulnerável', 'afiliativo'): 'acolhedor',
+        ('vulnerável', 'neutro'): 'acolhedor',
+        
+        ('resistente', 'defensivo'): 'direto',
+        ('resistente', 'engajado'): 'técnico',
+        ('resistente', 'assertivo'): 'técnico',
+        ('resistente', 'afiliativo'): 'colaborativo',
+        ('resistente', 'neutro'): 'direto',
+        
+        ('receptivo', 'defensivo'): 'colaborativo',
+        ('receptivo', 'engajado'): 'motivador',
+        ('receptivo', 'assertivo'): 'colaborativo',
+        ('receptivo', 'afiliativo'): 'motivador',
+        ('receptivo', 'neutro'): 'colaborativo',
+        
+        ('neutro', 'defensivo'): 'direto',
+        ('neutro', 'engajado'): 'colaborativo',
+        ('neutro', 'assertivo'): 'técnico',
+        ('neutro', 'afiliativo'): 'acolhedor',
+        ('neutro', 'neutro'): 'direto'
+    }
+    
+    # Ajustes com base na atitude
+    attitude_adjustments = {
+        'retraído': {
+            'direto': 'acolhedor',
+            'técnico': 'colaborativo'
+        },
+        'cooperativo': {
+            'direto': 'colaborativo',
+            'técnico': 'colaborativo'
+        },
+        'resistente': {
+            'acolhedor': 'direto',
+            'colaborativo': 'técnico'
+        }
+    }
+    
+    # Ajustes com base no contexto do tema
+    theme_adjustments = {
+        'profissional': {
+            'acolhedor': 'técnico',
+            'motivador': 'colaborativo'
+        },
+        'sensível': {
+            'direto': 'acolhedor',
+            'motivador': 'colaborativo'
+        },
+        'pessoal': {
+            'técnico': 'acolhedor',
+            'direto': 'colaborativo'
+        }
+    }
+    
+    # 1. Estilo base da matriz emocional+comportamental
+    base_style = 'direto'  # estilo padrão
+    
+    if emotional_state and behavior_state:
+        key = (emotional_state, behavior_state)
+        if key in style_matrix:
+            base_style = style_matrix[key]
+    
+    # 2. Ajustar com base na atitude (se disponível)
+    if attitude_state and attitude_state in attitude_adjustments:
+        adjustments = attitude_adjustments[attitude_state]
+        if base_style in adjustments:
+            base_style = adjustments[base_style]
+    
+    # 3. Ajustar com base no contexto do tema (se disponível)
+    if theme_context and theme_context in theme_adjustments:
+        adjustments = theme_adjustments[theme_context]
+        if base_style in adjustments:
+            base_style = adjustments[base_style]
+    
+    # 4. Considerar histórico recente (se disponível)
+    if recent_style:
+        # Se houve resposta positiva a um estilo recentemente, dar 50% de chance de mantê-lo
+        import random
+        if random.random() < 0.5:
+            base_style = recent_style
+    
+    # 5. Considerar preferências específicas do perfil (se disponíveis)
+    if 'communication_preferences' in profile.get('psychological_profile', {}):
+        preferences = profile['psychological_profile']['communication_preferences']
+        
+        # Se houver uma preferência explícita, priorizar
+        if 'preferred_style' in preferences:
+            preferred_style = preferences['preferred_style']
+            if preferred_style in communication_styles:
+                # Dar maior peso à preferência (75% de chance de usá-la)
+                import random
+                if random.random() < 0.75:
+                    base_style = preferred_style
+    
+    # Obter detalhes do estilo selecionado
+    selected_style = communication_styles.get(base_style, communication_styles['direto'])
+    
+    # Construir resultado
+    result = {
+        'recommended_style': base_style,
+        'style_details': selected_style,
+        'context_analysis': {
+            'emotional_state': emotional_state,
+            'behavior_state': behavior_state,
+            'attitude_state': attitude_state,
+            'theme_context': theme_context,
+            'recent_effective_style': recent_style
+        }
+    }
+    
+    return result
+Vamos implementar o décimo e último módulo: "Introduções com Sugestões Positivas"
+
+10. Introduções com Sugestões Positivas
+Este módulo inicia mensagens com expressões que reforçam estados mentais ou comportamentos construtivos.
+
+python
+
+Copy
+def generate_positive_openers(self, context, profile_id):
+    """
+    Gera introduções que incluem sugestões positivas sutis para reforçar
+    estados mentais ou comportamentos construtivos
+    """
+    if not context or not profile_id:
+        return None
+    
+    # Obter o perfil
+    profile = self.profiles.get(profile_id)
+    if not profile:
+        return None
+    
+    # Obter informações de contexto relevantes
+    theme = None
+    if 'themes' in context and context['themes']:
+        theme = context['themes'][0].replace('#', '')
+    
+    # Identificar necessidades específicas com base no perfil e contexto
+    
+    # 1. Verificar padrões psicológicos que poderiam se beneficiar de reforço positivo
+    psychological_needs = []
+    
+    if 'psychological_profile' in profile:
+        psych_profile = profile['psychological_profile']
+        
+        # Verificar necessidade de aprovação
+        if ('motivation_factors' in psych_profile and 
+            'approval_need' in psych_profile['motivation_factors'] and
+            psych_profile['motivation_factors']['approval_need'].get('level') == 'alta'):
+            psychological_needs.append('approval')
+        
+        # Verificar baixa tolerância a incertezas
+        if ('cognitive_patterns' in psych_profile and 
+            'uncertainty_tolerance' in psych_profile['cognitive_patterns'] and
+            psych_profile['cognitive_patterns']['uncertainty_tolerance'].get('level') == 'baixa'):
+            psychological_needs.append('certainty')
+        
+        # Verificar necessidade de controle
+        if ('motivation_factors' in psych_profile and 
+            'control_need' in psych_profile['motivation_factors'] and
+            psych_profile['motivation_factors']['control_need'].get('level') == 'alta'):
+            psychological_needs.append('control')
+        
+        # Verificar vulnerabilidade
+        if ('emotional_tendencies' in psych_profile and 
+            'vulnerability' in psych_profile['emotional_tendencies'] and
+            psych_profile['emotional_tendencies']['vulnerability'].get('level') == 'alta'):
+            psychological_needs.append('safety')
+    
+    # 2. Verificar comportamentos que poderiam ser estimulados
+    desired_behaviors = []
+    
+    if 'behavioral_patterns' in profile:
+        behavioral = profile['behavioral_patterns']
+        
+        # Obter distribuição de comportamentos
+        comm_style = behavioral.get('communication_style', {})
+        
+        # Comportamentos a serem estimulados (baixos no perfil)
+        if comm_style.get('proactive', 0) < 0.3:
+            desired_behaviors.append('proactivity')
+        
+        if comm_style.get('collaborative', 0) < 0.3:
+            desired_behaviors.append('collaboration')
+    
+    # 3. Verificar atitudes que poderiam ser estimuladas
+    desired_attitudes = []
+    
+    if 'communication_stats' in profile:
+        attitude_dist = profile['communication_stats'].get('attitude_distribution', {})
+        
+        # Atitudes a serem estimuladas (baixas no perfil)
+        if attitude_dist.get('colaborativa', 0) < 0.3:
+            desired_attitudes.append('collaborative')
+        
+        if attitude_dist.get('assertiva', 0) < 0.2:
+            desired_attitudes.append('assertive')
+    
+    # Criar conjunto de templates de introduções positivas
+    
+    # Templates gerais (sem necessidade específica)
+    general_openers = [
+        "Apreciando sua atenção a este assunto, gostaria de discutir {tema}.",
+        "Valorizando sua perspectiva, vamos conversar sobre {tema}.",
+        "Reconhecendo sua experiência, gostaria de abordar {tema}.",
+        "Sabendo do seu interesse em soluções eficazes, queria tratar sobre {tema}.",
+        "Considerando sua habilidade para lidar com situações como esta, vamos falar sobre {tema}."
+    ]
+    
+    # Templates por necessidade psicológica
+    psychological_openers = {
+        'approval': [
+            "Seu trabalho neste projeto tem sido muito valioso. Em relação a {tema}...",
+            "Tenho observado sua dedicação consistente. Sobre {tema}...",
+            "Sua contribuição tem feito diferença significativa. Agora, sobre {tema}..."
+        ],
+        'certainty': [
+            "Para mantermos o planejamento claro, vamos definir os próximos passos para {tema}.",
+            "Para garantir um processo estruturado, podemos estabelecer diretrizes para {tema}.",
+            "Para assegurar previsibilidade, vamos delinear exatamente como abordaremos {tema}."
+        ],
+        'control': [
+            "Você tem total autonomia para definir como prefere conduzir {tema}.",
+            "Respeitando seu critério de decisão, gostaria de ouvir sua abordagem para {tema}.",
+            "Confiando em sua capacidade de gerenciar este processo, vamos discutir {tema}."
+        ],
+        'safety': [
+            "Em um ambiente de total confiança, podemos conversar abertamente sobre {tema}.",
+            "Com o compromisso de apoio mútuo, gostaria de abordar {tema}.",
+            "Dentro de nossa parceria de colaboração, podemos explorar soluções para {tema}."
+        ]
+    }
+    
+    # Templates por comportamento desejado
+    behavior_openers = {
+        'proactivity': [
+            "Iniciativas como as que você já demonstrou seriam muito valiosas para resolver {tema}.",
+            "Sua capacidade de antecipar soluções seria excelente aplicada a {tema}.",
+            "Ao tomar a frente neste processo, poderíamos avançar rapidamente em {tema}."
+        ],
+        'collaboration': [
+            "Unindo nossas perspectivas, podemos encontrar a melhor solução para {tema}.",
+            "Trabalhando em conjunto, como tem sido produtivo anteriormente, podemos resolver {tema}.",
+            "Combinando nossos conhecimentos complementares, vamos abordar {tema}."
+        ]
+    }
+    
+    # Templates por atitude desejada
+    attitude_openers = {
+        'collaborative': [
+            "Em espírito de cooperação, gostaria de discutir {tema} com você.",
+            "Buscando uma solução que beneficie a todos, vamos conversar sobre {tema}.",
+            "Construindo um entendimento comum, podemos avançar em {tema}."
+        ],
+        'assertive': [
+            "Sua opinião clara será fundamental para definirmos o melhor caminho para {tema}.",
+            "Uma perspectiva direta como a sua ajudaria muito a resolver {tema}.",
+            "Decisões objetivas, que você sabe tomar, serão importantes para {tema}."
+        ]
+    }
+    
+    # Selecionar os templates mais apropriados com base nas necessidades identificadas
+    appropriate_templates = []
+    
+    # Priorizar as necessidades psicológicas mais importantes
+    if psychological_needs:
+        # Escolher a necessidade mais relevante
+        import random
+        primary_need = random.choice(psychological_needs)
+        
+        if primary_need in psychological_openers:
+            appropriate_templates.extend(psychological_openers[primary_need])
+    
+    # Adicionar templates para comportamentos desejados
+    if desired_behaviors and len(appropriate_templates) < 5:
+        primary_behavior = random.choice(desired_behaviors)
+        
+        if primary_behavior in behavior_openers:
+            appropriate_templates.extend(behavior_openers[primary_behavior])
+    
+    # Adicionar templates para atitudes desejadas
+    if desired_attitudes and len(appropriate_templates) < 5:
+        primary_attitude = random.choice(desired_attitudes)
+        
+        if primary_attitude in attitude_openers:
+            appropriate_templates.extend(attitude_openers[primary_attitude])
+    
+    # Se não houver templates específicos suficientes, adicionar gerais
+    if len(appropriate_templates) < 3:
+        appropriate_templates.extend(general_openers)
+    
+    # Limitar a 5 templates
+    appropriate_templates = appropriate_templates[:5]
+    
+    # Substituir placeholders
+    theme_text = theme or "este assunto"
+    openers = [template.format(tema=theme_text) for template in appropriate_templates]
+    
+    # Retornar resultado
+    return {
+        'positive_openers': openers,
+        'identified_needs': {
+            'psychological': psychological_needs,
+            'behaviors': desired_behaviors,
+            'attitudes': desired_attitudes
+        },
+        'current_theme': theme_text
+    }
+Integração dos Módulos
+Agora, vamos criar uma função integradora que combine todos esses módulos para oferecer uma análise completa e recomendações de comunicação.
+
+python
+
+Copy
+def analyze_and_refine_communication(self, message, profile_id, conversation_context=None, previous_style_responses=None):
+    """
+    Função integradora que combina todos os módulos de comunicação para
+    analisar a mensagem atual e oferecer recomendações de comunicação
+    personalizadas e contextualmente apropriadas
+    """
+    if not message or not profile_id:
+        return None
+    
+    # Verificar se o perfil existe
+    if profile_id not in self.profiles:
+        logger.error(f"Perfil não encontrado: {profile_id}")
+        return None
+    
+    # Resultados de cada módulo
+    results = {}
+    
+    # 1. Perfil de Complexidade Comunicacional
+    if conversation_context and 'conversation' in conversation_context:
+        complexity_profile = self.analyze_communication_complexity(
+            conversation_context['conversation'], profile_id)
+        results['complexity_profile'] = complexity_profile
+    
+    # 2. Personalização Afetiva Responsiva
+    affective_responses = self.generate_affective_response(message, conversation_context, profile_id)
+    results['affective_responses'] = affective_responses
+    
+    # 3. Estímulo de Consistência Comportamental
+    behavioral_consistency = self.detect_behavioral_inconsistencies(message, profile_id)
+    results['behavioral_consistency'] = behavioral_consistency
+    
+    # 4. Reforço de Participação Colaborativa
+    collaborative_engagement = self.suggest_collaborative_engagement(message, conversation_context, profile_id)
+    results['collaborative_engagement'] = collaborative_engagement
+    
+    # 5. Intensificação de Vínculo Baseado em Responsividade
+    # Para este módulo, precisamos de dados ao longo do tempo
+    if conversation_context and 'recent_conversations' in conversation_context:
+        affective_calibration = self.calibrate_affective_engagement(
+            profile_id, conversation_context['recent_conversations'])
+        results['affective_calibration'] = affective_calibration
+    
+    # 6. Reconhecimento Direcionado por Mérito
+    merit_recognition = self.generate_merit_based_recognition(message, profile_id)
+    results['merit_recognition'] = merit_recognition
+    
+    # 7. Realce de Expectativas Construtivas por Referência Positiva
+    positive_references = self.generate_positive_references(profile_id, conversation_context)
+    results['positive_references'] = positive_references
+    
+    # 8. Reforço de Referências Positivas Anteriores
+    positive_reinforcement = self.reinforce_positive_experiences(profile_id, conversation_context)
+    results['positive_reinforcement'] = positive_reinforcement
+    
+    # 9. Alternância de Estilos de Comunicação Contextual
+    communication_style = self.adapt_communication_style(message, profile_id, previous_style_responses)
+    results['communication_style'] = communication_style
+    
+    # 10. Introduções com Sugestões Positivas
+    positive_openers = self.generate_positive_openers(conversation_context, profile_id)
+    results['positive_openers'] = positive_openers
+    
+    # Gerar recomendações consolidadas
+    consolidated_recommendations = self.generate_consolidated_recommendations(results, profile_id)
+    
+    # Retornar resultados completos
+    return {
+        'module_results': results,
+        'recommendations': consolidated_recommendations
+    }
+
+def generate_consolidated_recommendations(self, module_results, profile_id):
+    """
+    Combina os resultados de todos os módulos para gerar recomendações
+    consolidadas e coerentes
+    """
+    recommendations = {
+        'message_structure': {},
+        'response_options': [],
+        'communication_style': None,
+        'engagement_strategies': []
+    }
+    
+    # 1. Determinar estrutura da mensagem
+    structure = {
+        'opener': None,
+        'body_elements': [],
+        'closer': None
+    }
+    
+    # Selecionar um opener com sugestão positiva
+    if module_results.get('positive_openers'):
+        openers = module_results['positive_openers'].get('positive_openers', [])
+        if openers:
+            import random
+            structure['opener'] = random.choice(openers)
+    
+    # Decidir elementos para o corpo da mensagem
+    body_candidates = []
+    
+    # Adicionar reconhecimento por mérito (se aplicável)
+    if module_results.get('merit_recognition'):
+        recognition = module_results['merit_recognition'].get('recognition_phrases', [])
+        if recognition:
+            body_candidates.append({
+                'type': 'recognition',
+                'content': recognition[0],
+                'priority': 1  # Alta prioridade
+            })
+    
+    # Adicionar resposta afetiva (se aplicável)
+    if module_results.get('affective_responses'):
+        affective = module_results['affective_responses'].get('affective_responses', [])
+        if affective:
+            body_candidates.append({
+                'type': 'affective',
+                'content': random.choice(affective),
+                'priority': 2
+            })
+    
+    # Adicionar perguntas reflexivas para consistência comportamental
+    if module_results.get('behavioral_consistency'):
+        questions = module_results['behavioral_consistency'].get('reflective_questions', [])
+        if questions:
+            body_candidates.append({
+                'type': 'reflective_question',
+                'content': questions[0],
+                'priority': 3
+            })
+    
+    # Adicionar sugestões colaborativas
+    if module_results.get('collaborative_engagement'):
+        suggestions = module_results['collaborative_engagement'].get('collaborative_suggestions', [])
+        if suggestions:
+            body_candidates.append({
+                'type': 'collaborative',
+                'content': suggestions[0],
+                'priority': 2
+            })
+    
+    # Adicionar referência positiva
+    if module_results.get('positive_references'):
+        references = module_results['positive_references'].get('reference_phrases', [])
+        if references:
+            body_candidates.append({
+                'type': 'positive_reference',
+                'content': references[0],
+                'priority': 4
+            })
+    
+    # Adicionar reforço de experiência positiva anterior
+    if module_results.get('positive_reinforcement'):
+        reinforcements = module_results['positive_reinforcement'].get('reinforcement_phrases', [])
+        if reinforcements:
+            body_candidates.append({
+                'type': 'positive_reinforcement',
+                'content': reinforcements[0],
+                'priority': 3
+            })
+    
+    # Ordenar elementos por prioridade e selecionar no máximo 3
+    body_candidates.sort(key=lambda x: x['priority'])
+    structure['body_elements'] = [item['content'] for item in body_candidates[:3]]
+    
+    # Selecionar um fechamento
+    closers = [
+        "Aguardo seus comentários sobre esta abordagem.",
+        "O que você pensa sobre seguirmos nessa direção?",
+        "Estou à disposição para discutirmos mais sobre isso.",
+        "Vamos conversar mais sobre como implementar isso?"
+    ]
+    structure['closer'] = random.choice(closers)
+    
+    recommendations['message_structure'] = structure
+    
+    # 2. Determinar estilo de comunicação recomendado
+    if module_results.get('communication_style'):
+        style = module_results['communication_style'].get('recommended_style')
+        details = module_results['communication_style'].get('style_details', {})
+        
+        recommendations['communication_style'] = {
+            'style': style,
+            'description': details.get('description', ''),
+            'characteristics': details.get('characteristics', []),
+            'examples': details.get('examples', [])
+        }
+    
+    # 3. Gerar opções de resposta completas
+    # Combinar elementos da estrutura recomendada
+    response_templates = []
+    
+    # Se temos um estilo definido, usar exemplos dele como base
+    if (module_results.get('communication_style') and 
+        'examples' in module_results['communication_style'].get('style_details', {})):
+        
+        base_templates = module_results['communication_style']['style_details']['examples']
+        
+        for template in base_templates:
+            # Identificar e substituir a ação principal
+            # Aqui podemos inserir uma ação relevante com base no contexto
+            action = "trabalharmos juntos nesta questão"
+            response = template.format(ação_principal=action)
+            
+            response_templates.append(response)
+    else:
+        # Templates genéricos
+        response_templates = [
+            "Vamos trabalhar juntos para encontrar a melhor solução para esta situação.",
+            "Podemos abordar isso de forma colaborativa para atender às necessidades de todos.",
+            "Sugiro avançarmos com uma abordagem estruturada para este assunto."
+        ]
+    
+    # Criar opções de resposta completas combinando estrutura e templates
+    for template in response_templates:
+        response_option = ""
+        
+        # Adicionar opener se disponível
+        if structure['opener']:
+            response_option += structure['opener'] + " "
+        
+        # Adicionar corpo principal (template)
+        response_option += template + " "
+        
+        # Adicionar elementos adicionais do corpo (limitado a 1 para não ficar muito longo)
+        if structure['body_elements']:
+            response_option += structure['body_elements'][0] + " "
+        
+        # Adicionar fechamento
+        if structure['closer']:
+            response_option += structure['closer']
+        
+        recommendations['response_options'].append(response_option.strip())
+    
+    # 4. Estratégias de engajamento adicionais
+    engagement_strategies = []
+    
+    # Adicionar estratégias baseadas nos resultados dos módulos
+    if module_results.get('behavioral_consistency'):
+        if module_results['behavioral_consistency'].get('inconsistencies'):
+            engagement_strategies.append(
+                "Explorar a mudança de padrão comportamental com perguntas abertas e não-julgadoras."
+            )
+    
+    if module_results.get('affective_calibration'):
+        intensity = module_results['affective_calibration'].get('affective_intensity')
+        if intensity:
+            engagement_strategies.append(
+                f"Manter um nível {intensity} de expressão emocional com base na receptividade observada."
+            )
+    
+    if module_results.get('complexity_profile'):
+        complexity = module_results['complexity_profile'].get('complexity_level')
+        if complexity:
+            if complexity == 'simples':
+                engagement_strategies.append(
+                    "Utilizar linguagem direta e exemplos concretos, evitando abstrações."
+                )
+            elif complexity == 'complexo':
+                engagement_strategies.append(
+                    "Incorporar análises mais elaboradas e nuances conceituais nas discussões."
+                )
+    
+    recommendations['engagement_strategies'] = engagement_strategies
+    
+    return recommendations
+Interface para os Módulos
+Para facilitar o uso desses módulos, podemos adicionar uma interface na classe principal que permita acessá-los de maneira integrada.
+
+python
+
+Copy
+def add_refinement_modules_to_ui(self):
+    """
+    Adiciona os módulos de refinamento de comunicação à interface do usuário
+    """
+    # Adicionar nova aba ao notebook principal
+    self.refinement_tab = ttk.Frame(self.notebook)
+    self.notebook.add(self.refinement_tab, text="Refinamento Comunicacional")
+    
+    # Configurar a aba de refinamento
+    self.setup_refinement_tab()
+
+def setup_refinement_tab(self):
+    """
+    Configura a aba de refinamento comunicacional
+    """
+    # Container principal com scroll
+    main_canvas = tk.Canvas(self.refinement_tab)
+    scrollbar = ttk.Scrollbar(self.refinement_tab, orient=tk.VERTICAL, command=main_canvas.yview)
+    
+    main_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    
+    main_canvas.configure(yscrollcommand=scrollbar.set)
+    
+    # Frame dentro do canvas para conteúdo
+    content_frame = ttk.Frame(main_canvas)
+    canvas_window = main_canvas.create_window((0, 0), window=content_frame, anchor=tk.NW)
+    
+    # Título
+    ttk.Label(content_frame, text="Refinamento Comunicacional", 
+            font=("Arial", 16, "bold")).pack(pady=(0, 20))
+    
+    # Descrição
+    description = (
+        "Esta ferramenta analisa padrões de comunicação e gera recomendações personalizadas "
+        "para otimizar a eficácia das interações."
+    )
+    ttk.Label(content_frame, text=description, wraplength=600).pack(pady=(0, 20))
+    
+    # Frame de seleção
+    selection_frame = ttk.Frame(content_frame)
+    selection_frame.pack(fill=tk.X, pady=10)
+    
+    ttk.Label(selection_frame, text="Perfil:").pack(side=tk.LEFT, padx=(0, 10))
+    
+    # Dropdown para perfis
+    self.refinement_profile_var = tk.StringVar()
+    profiles_dropdown = ttk.Combobox(selection_frame, textvariable=self.refinement_profile_var, state="readonly", width=30)
+    profiles_dropdown.pack(side=tk.LEFT, padx=(0, 20))
+    
+    # Preencher com perfis disponíveis
+    profile_names = []
+    self.profile_id_map = {}
+    
+    for profile_id, profile_data in self.profiles.items():
+        profile_name = profile_data['name']
+        profile_names.append(profile_name)
+        self.profile_id_map[profile_name] = profile_id
+    
+    profiles_dropdown['values'] = profile_names
+    
+    # Botão de análise
+    ttk.Button(selection_frame, text="Analisar Comunicação", 
+             command=self.run_communication_refinement).pack(side=tk.LEFT, padx=10)
+    
+    # Área de resultados
+    self.refinement_results_frame = ttk.LabelFrame(content_frame, text="Resultados da Análise")
+    self.refinement_results_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+    
+    ttk.Label(self.refinement_results_frame, 
+            text="Selecione um perfil e clique em 'Analisar Comunicação' para ver os resultados.",
+            wraplength=600).pack(pady=50)
+    
+    # Configurar scroll
+    def configure_scroll(event):
+        main_canvas.configure(scrollregion=main_canvas.bbox("all"), width=event.width)
+    
+    content_frame.bind("<Configure>", configure_scroll)
+    
+    # Vincular roda do mouse ao scroll
+    def on_mousewheel(event):
+        main_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+    
+    main_canvas.bind_all("<MouseWheel>", on_mousewheel)
+
+def run_communication_refinement(self):
+    """
+    Executa a análise de refinamento comunicacional para o perfil selecionado
+    """
+    # Obter perfil selecionado
+    profile_name = self.refinement_profile_var.get()
+    
+    if not profile_name:
+        messagebox.showinfo("Aviso", "Por favor, selecione um perfil para análise.")
+        return
+    
+    profile_id = self.profile_id_map.get(profile_name)
+    
+    if not profile_id:
+        messagebox.showerror("Erro", "Perfil não encontrado.")
+        return
+    
+    # Verificar se há análises para o perfil
+    profile = self.profiles.get(profile_id)
+    
+    if not profile or not profile.get('analyses'):
+        messagebox.showinfo(
+            "Aviso", 
+            "Este perfil não possui análises disponíveis. Realize pelo menos uma análise primeiro."
+        )
+        return
+    
+    # Obter análise mais recente
+    latest_analysis = sorted(profile['analyses'], key=lambda x: x['timestamp'], reverse=True)[0]
+    
+    # Carregar conversa associada à análise
+    conversation_path = os.path.join(
+        self.config["DATA_DIR"], 
+        profile_id, 
+        "conversations", 
+        f"{latest_analysis['id']}.json"
+    )
+    
+    if not os.path.exists(conversation_path):
+        messagebox.showerror("Erro", "Conversa da análise não encontrada.")
+        return
+    
+    try:
+        # Carregar conversa
+        with open(conversation_path, 'r', encoding='utf-8') as f:
+            conversation = json.load(f)
+        
+        # Filtrar mensagens do perfil alvo
+        target_messages = [msg for msg in conversation if msg.get('is_target', False)]
+        
+        if not target_messages:
+            messagebox.showinfo("Aviso", "Nenhuma mensagem do perfil alvo encontrada na conversa.")
+            return
+        
+        # Usar a última mensagem do perfil para a análise
+        last_message = target_messages[-1]
+        
+        # Preparar contexto
+        context = {
+            'conversation': conversation,
+            'recent_conversations': [conversation],
+            'themes': last_message.get('analysis', {}).get('themes', [])
+        }
+        
+        # Mostrar progresso
+        self.show_progress("Analisando padrões comunicacionais...")
+        
+        # Executar análise completa
+        refinement_results = self.analyze_and_refine_communication(
+            last_message, profile_id, context)
+        
+        # Esconder progresso
+        self.hide_progress()
+        
+        # Exibir resultados
+        self.display_refinement_results(refinement_results, profile_name)
+        
+    except Exception as e:
+        self.hide_progress()
+        logger.error(f"Erro na análise de refinamento: {e}")
+        messagebox.showerror("Erro", f"Erro ao realizar análise: {str(e)}")
+
+def display_refinement_results(self, results, profile_name):
+    """
+    Exibe os resultados da análise de refinamento comunicacional
+    """
+    # Limpar frame de resultados
+    for widget in self.refinement_results_frame.winfo_children():
+        widget.destroy()
+    
+    if not results:
+        ttk.Label(self.refinement_results_frame, 
+                text="Nenhum resultado disponível.",
+                wraplength=600).pack(pady=50)
+        return
+    
+    # Container com scroll para resultados
+    results_canvas = tk.Canvas(self.refinement_results_frame)
+    results_scrollbar = ttk.Scrollbar(self.refinement_results_frame, orient=tk.VERTICAL, command=results_canvas.yview)
+    
+    results_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    results_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    
+    results_canvas.configure(yscrollcommand=results_scrollbar.set)
+    
+    # Frame dentro do canvas
+    results_content = ttk.Frame(results_canvas)
+    results_canvas_window = results_canvas.create_window((0, 0), window=results_content, anchor=tk.NW)
+    
+    # Título
+    ttk.Label(results_content, text=f"Análise de Comunicação: {profile_name}", 
+            font=("Arial", 14, "bold")).pack(anchor=tk.W, pady=(0, 10))
+    
+    # Estilo de comunicação recomendado
+    if 'recommendations' in results and 'communication_style' in results['recommendations']:
+        style_frame = ttk.LabelFrame(results_content, text="Estilo de Comunicação Recomendado")
+        style_frame.pack(fill=tk.X, pady=10)
+        
+        style = results['recommendations']['communication_style']
+        
+        if style:
+            ttk.Label(style_frame, text=f"Estilo: {style['style'].capitalize()}", 
+                    font=("Arial", 11, "bold")).pack(anchor=tk.W, padx=10, pady=5)
+            
+            ttk.Label(style_frame, text=f"Descrição: {style['description']}", 
+                    wraplength=600).pack(anchor=tk.W, padx=10, pady=2)
+            
+            if 'characteristics' in style:
+                char_text = "Características: " + ", ".join(style['characteristics'])
+                ttk.Label(style_frame, text=char_text, wraplength=600).pack(anchor=tk.W, padx=10, pady=2)
+    
+    # Estrutura de mensagem recomendada
+    if 'recommendations' in results and 'message_structure' in results['recommendations']:
+        structure_frame = ttk.LabelFrame(results_content, text="Estrutura de Mensagem Recomendada")
+        structure_frame.pack(fill=tk.X, pady=10)
+        
+        structure = results['recommendations']['message_structure']
+        
+        if structure.get('opener'):
+            opener_frame = ttk.Frame(structure_frame)
+            opener_frame.pack(fill=tk.X, padx=10, pady=5)
+            
+            ttk.Label(opener_frame, text="Abertura:", width=10).pack(side=tk.LEFT, anchor=tk.N)
+            ttk.Label(opener_frame, text=structure['opener'], 
+                    wraplength=550).pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        if structure.get('body_elements'):
+            body_frame = ttk.Frame(structure_frame)
+            body_frame.pack(fill=tk.X, padx=10, pady=5)
+            
+            ttk.Label(body_frame, text="Corpo:", width=10).pack(side=tk.LEFT, anchor=tk.N)
+            
+            body_elements = ttk.Frame(body_frame)
+            body_elements.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            
+            for element in structure['body_elements']:
+                ttk.Label(body_elements, text="• " + element, 
+                        wraplength=550).pack(anchor=tk.W, pady=2)
+        
+        if structure.get('closer'):
+            closer_frame = ttk.Frame(structure_frame)
+            closer_frame.pack(fill=tk.X, padx=10, pady=5)
+            
+            ttk.Label(closer_frame, text="Fechamento:", width=10).pack(side=tk.LEFT, anchor=tk.N)
+            ttk.Label(closer_frame, text=structure['closer'], 
+                    wraplength=550).pack(side=tk.LEFT, fill=tk.X, expand=True)
+    
+    # Opções de resposta
+    if 'recommendations' in results and 'response_options' in results['recommendations']:
+        options_frame = ttk.LabelFrame(results_content, text="Opções de Resposta Sugeridas")
+        options_frame.pack(fill=tk.X, pady=10)
+        
+        options = results['recommendations']['response_options']
+        
+        for i, option in enumerate(options, 1):
+            option_frame = ttk.Frame(options_frame)
+            option_frame.pack(fill=tk.X, padx=10, pady=5)
+            
+            ttk.Label(option_frame, text=f"Opção {i}:", width=10).pack(side=tk.LEFT, anchor=tk.N)
+            option_text = scrolledtext.ScrolledText(option_frame, wrap=tk.WORD, height=4, width=60)
+            option_text.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            option_text.insert(tk.END, option)
+            option_text.config(state=tk.DISABLED)
+            
+            # Botão para copiar
+            def create_copy_command(text):
+                return lambda: self.copy_to_clipboard(text)
+            
+            ttk.Button(option_frame, text="Copiar", 
+                     command=create_copy_command(option)).pack(side=tk.LEFT, padx=5)
+    
+    # Estratégias de engajamento
+    if 'recommendations' in results and 'engagement_strategies' in results['recommendations']:
+        strategies_frame = ttk.LabelFrame(results_content, text="Estratégias de Engajamento")
+        strategies_frame.pack(fill=tk.X, pady=10)
+        
+        strategies = results['recommendations']['engagement_strategies']
+        
+        for strategy in strategies:
+            ttk.Label(strategies_frame, text="• " + strategy, 
+                    wraplength=600).pack(anchor=tk.W, padx=10, pady=2)
+    
+    # Configurar scroll
+    def configure_results_scroll(event):
+        results_canvas.configure(scrollregion=results_canvas.bbox("all"), width=event.width)
+    
+    results_content.bind("<Configure>", configure_results_scroll)
+
+def copy_to_clipboard(self, text):
+    """
+    Copia o texto fornecido para a área de transferência
+    """
+    self.root.clipboard_clear()
+    self.root.clipboard_append(text)
+    messagebox.showinfo("Copiado", "Texto copiado para a área de transferência")
+Conclusão da Implementação
+Os módulos acima implementam todas as 10 funcionalidades solicitadas:
+
+Perfil de Complexidade Comunicacional: Avalia o estilo de comunicação com base em vários fatores.
+Personalização Afetiva Responsiva: Sugere respostas com tom afetivo quando detecta necessidade de acolhimento.
+Estímulo de Consistência Comportamental: Detecta incongruências e sugere perguntas reflexivas.
+Reforço de Participação Colaborativa: Sugere frases para despertar senso de contribuição.
+Intensificação de Vínculo Baseado em Responsividade: Ajusta a intensidade de frases afetivas com base na responsividade.
+Reconhecimento Direcionado por Mérito: Oferece reconhecimento apenas quando padrões positivos são detectados.
+Realce de Expectativas Construtivas por Referência Positiva: Gera comparações com comportamentos passados.
+Reforço de Referências Positivas Anteriores: Repete frases que evocam experiências bem-sucedidas.
+Alternância de Estilos de Comunicação Contextual: Adapta o estilo de linguagem ao contexto emocional.
+Introduções com Sugestões Positivas: Inicia mensagens com expressões que reforçam estados mentais positivos.
+Além disso, foi criada uma função integradora que combina todos esses módulos para oferecer uma análise completa e recomendações de comunicação personalizadas.
+
+A implementação mantém-se neutra, evitando categorizações sensíveis explícitas, focando em padrões comportamentais e comunicacionais. A interface de usuário proposta facilita o acesso a essas funcionalidades de forma integrada ao sistema existente.
+
+Para implementar essas funcionalidades no PSICOM, você pode adicionar estas funções à classe principal PsychologicalAnalysisSystem e chamar add_refinement_modules_to_ui() no final do método initialize_gui().
+
+Implementação dos Módulos de Ajuste Interativo para PSICOM
+Analisando seu sistema PSICOM, desenvolverei os módulos de refinamento comunicacional solicitados, integrando-os à estrutura existente. Estas funcionalidades enriquecerão seu sistema com capacidades avançadas de personalização e adaptação contextual.
+
+Estrutura de Implementação
+Vou apresentar a implementação dos 10 módulos, incluindo:
+
+Código principal de cada módulo
+Interface para utilização
+Integração com o sistema existente
+1. Perfil de Complexidade Comunicacional
+python
+
+Copy
+def analyze_communication_complexity(self, conversation, profile_id):
+    """Análise da complexidade comunicacional com base em múltiplos fatores"""
+    if not conversation or not profile_id:
+        return None
+    
+    target_messages = [msg for msg in conversation if msg.get('is_target', False)]
+    
+    # Análise de estruturação linguística
+    structure_scores = []
+    for msg in target_messages:
+        if 'analysis' in msg and 'linguistic_analysis' in msg['analysis']:
+            complexity = msg['analysis']['linguistic_analysis'].get('style_metrics', {}).get('complexity', 0)
+            structure_scores.append(complexity)
+    
+    # Tempo médio entre respostas
+    response_times = []
+    for msg in target_messages:
+        if msg.get('context', {}).get('conversation_state', {}).get('is_response'):
+            response_time = msg['context']['conversation_state'].get('response_time')
+            if response_time is not None:
+                response_times.append(response_time)
+    
+    # Análise de coesão lógica
+    coherence_scores = []
+    for msg in target_messages:
+        text = msg.get('transcription') if msg.get('content_type') == 'audio' and msg.get('transcription') else msg.get('content', '')
+        
+        coherence_markers = [
+            'porque', 'portanto', 'assim', 'logo', 'então', 'dessa forma', 'por isso',
+            'consequentemente', 'visto que', 'uma vez que', 'já que', 'desde que'
+        ]
+        
+        words = text.lower().split()
+        if words:
+            coherence_score = sum(1 for word in words if any(marker in word for marker in coherence_markers)) / len(words)
+            coherence_scores.append(coherence_score * 10)  # Normalizar para escala 0-10
+    
+    # Análise de variações de tom emocional
+    emotion_variations = []
+    emotions = [msg.get('analysis', {}).get('emotion', {}).get('primary_emotion') for msg in target_messages 
+               if msg.get('analysis', {}).get('emotion', {}).get('primary_emotion')]
+    
+    if emotions:
+        unique_emotions = len(set(emotions))
+        emotion_variation = min(10, unique_emotions * 2)
+        emotion_variations.append(emotion_variation)
+    
+    # Cálculos finais
+    avg_structure = sum(structure_scores) / len(structure_scores) if structure_scores else None
+    avg_response_time = sum(response_times) / len(response_times) if response_times else None
+    avg_coherence = sum(coherence_scores) / len(coherence_scores) if coherence_scores else None
+    avg_emotion_variation = sum(emotion_variations) / len(emotion_variations) if emotion_variations else None
+    
+    complexity_profile = {
+        'structure_level': avg_structure,
+        'response_time': avg_response_time,
+        'coherence_level': avg_coherence,
+        'emotional_variation': avg_emotion_variation,
+    }
+    
+    # Complexidade global
+    components = [score for score in [avg_structure, avg_coherence, avg_emotion_variation] if score is not None]
+    if components:
+        global_complexity = sum(components) / len(components)
+        complexity_profile['global_complexity'] = global_complexity
+        
+        if global_complexity < 3:
+            complexity_profile['complexity_level'] = 'simples'
+        elif global_complexity < 6:
+            complexity_profile['complexity_level'] = 'moderado'
+        else:
+            complexity_profile['complexity_level'] = 'complexo'
+    
+    # Salvamento no perfil
+    if self.profiles and profile_id in self.profiles:
+        if 'communication_patterns' not in self.profiles[profile_id]:
+            self.profiles[profile_id]['communication_patterns'] = {}
+        
+        self.profiles[profile_id]['communication_patterns']['complexity_profile'] = complexity_profile
+        self.update_profile(profile_id, self.profiles[profile_id])
+    
+    return complexity_profile
+2. Personalização Afetiva Responsiva
+python
+
+Copy
+def generate_affective_response(self, message, context=None, profile_id=None):
+    """Gera respostas com tom afetivo ao detectar insegurança ou necessidade de acolhimento"""
+    if not message or not profile_id:
+        return None
+    
+    profile = self.profiles.get(profile_id)
+    if not profile:
+        return None
+    
+    # Analisar indicadores de insegurança
+    text = message.get('transcription') if message.get('content_type') == 'audio' and message.get('transcription') else message.get('content', '')
+    
+    insecurity_markers = [
+        'não sei', 'talvez', 'acho que', 'será que', 'não tenho certeza', 
+        'preciso de ajuda', 'estou preocupado', 'estou ansioso', 'receio',
+        'desculpe', 'perdão', 'não estou bem', 'está difícil'
+    ]
+    
+    # Verificar análises existentes
+    emotion_indicators = False
+    if (message.get('analysis', {}).get('emotion', {}).get('primary_emotion') in 
+        ['hesitação', 'tensão', 'ansiedade', 'tristeza']):
+        emotion_indicators = True
+    
+    attitude_indicators = False
+    if message.get('analysis', {}).get('attitude', {}).get('primary_attitude') in ['evasiva', 'submissa']:
+        attitude_indicators = True
+    
+    psych_indicators = False
+    vulnerability = message.get('analysis', {}).get('psychological_indicators', {}).get('vulnerability', {}).get('level')
+    if vulnerability in ['média', 'alta']:
+        psych_indicators = True
+    
+    text_indicators = any(marker in text.lower() for marker in insecurity_markers)
+    
+    needs_affective_response = emotion_indicators or attitude_indicators or psych_indicators or text_indicators
+    
+    if not needs_affective_response:
+        return None
+    
+    # Ajustar intensidade afetiva baseada no perfil
+    affective_intensity = 'moderada'  # padrão
+    
+    if 'psychological_profile' in profile:
+        approval_need = profile.get('psychological_profile', {}).get('motivation_factors', {}).get('approval_need', {}).get('level')
+        if approval_need == 'alta':
+            affective_intensity = 'alta'
+        
+        emotional_openness = profile.get('psychological_profile', {}).get('emotional_tendencies', {}).get('emotional_openness', {}).get('level')
+        if emotional_openness == 'baixa':
+            affective_intensity = 'sutil'
+        elif emotional_openness == 'alta':
+            affective_intensity = 'alta'
+    
+    # Respostas afetivas por intensidade
+    affective_responses = {
+        'sutil': [
+            "Entendo o que você está dizendo.",
+            "Estou acompanhando seu raciocínio.",
+            "Vamos trabalhar nisso juntos.",
+            "Agradeço por compartilhar essa informação.",
+            "Sua perspectiva é válida."
+        ],
+        'moderada': [
+            "Compreendo completamente sua posição.",
+            "Valorizo muito sua sinceridade nesse assunto.",
+            "Vamos encontrar uma solução adequada juntos.",
+            "Quero que saiba que sua opinião é importante para mim.",
+            "Estou aqui para ajudar no que for preciso."
+        ],
+        'alta': [
+            "Quero que saiba que estou totalmente ao seu lado nessa situação.",
+            "Valorizo imensamente sua coragem em compartilhar isso comigo.",
+            "Pode contar comigo para encontrarmos o melhor caminho juntos.",
+            "Entendo perfeitamente como você se sente e estou aqui para apoiar.",
+            "Sua preocupação é completamente justificável, vamos resolver isso."
+        ]
+    }
+    
+    selected_responses = affective_responses.get(affective_intensity, affective_responses['moderada'])
+    
+    return {
+        'affective_responses': selected_responses,
+        'intensity': affective_intensity,
+        'indicators': {
+            'emotion': emotion_indicators,
+            'attitude': attitude_indicators,
+            'psychological': psych_indicators,
+            'text': text_indicators
+        }
+    }
+3. Estímulo de Consistência Comportamental
+python
+
+Copy
+def detect_behavioral_inconsistencies(self, message, profile_id):
+    """Detecta incongruências entre padrões comunicacionais históricos e comportamento recente"""
+    if not message or not profile_id:
+        return None
+    
+    profile = self.profiles.get(profile_id)
+    if not profile:
+        return None
+    
+    historical_patterns = profile.get('behavioral_patterns', {})
+    communication_style = historical_patterns.get('communication_style', {})
+    
+    current_behavior = message.get('analysis', {}).get('behavioral_indicators', {})
+    current_dominant = current_behavior.get('dominant_pattern', {}).get('pattern')
+    
+    if not current_dominant or not communication_style:
+        return None
+    
+    # Identificar incongruências significativas
+    inconsistencies = []
+    
+    # Comportamento atual vs. histórico
+    if current_dominant in communication_style:
+        historical_score = communication_style.get(current_dominant, 0)
+        if historical_score < 0.2:  # Comportamento raro (menos de 20% do histórico)
+            inconsistencies.append({
+                'type': 'rare_behavior',
+                'behavior': current_dominant,
+                'historical_score': historical_score
+            })
+    
+    # Atitude atual vs. histórico
+    current_attitude = message.get('analysis', {}).get('attitude', {}).get('primary_attitude')
+    historical_attitudes = profile.get('communication_stats', {}).get('attitude_distribution', {})
+    
+    if current_attitude and historical_attitudes and current_attitude in historical_attitudes:
+        historical_attitude_score = historical_attitudes.get(current_attitude, 0)
+        if historical_attitude_score < 0.2:
+            inconsistencies.append({
+                'type': 'rare_attitude',
+                'attitude': current_attitude,
+                'historical_score': historical_attitude_score
+            })
+    
+    if not inconsistencies:
+        return None
+    
+    # Gerar perguntas reflexivas baseadas nas inconsistências
+    reflective_questions = []
+    
+    # Templates de perguntas para cada tipo de comportamento
+    behavior_questions = {
+        'avoidance': [
+            "O que te faz sentir que precisa ser cauteloso(a) neste assunto?",
+            "Existe algo específico que está causando hesitação?"
+        ],
+        'approval_seeking': [
+            "O que seria ideal para você nesta situação?",
+            "O que te faria sentir mais confortável com esta decisão?"
+        ],
+        'control': [
+            "O que te leva a querer mais estrutura neste momento?",
+            "Existe alguma preocupação específica que motiva essa abordagem?"
+        ],
+        'emotional': [
+            "Parece que este assunto é significativo para você. Gostaria de compartilhar mais sobre isso?",
+            "O que faz este tema despertar esse tipo de resposta em você?"
+        ]
+    }
+    
+    # Templates para atitudes
+    attitude_questions = {
+        'evasiva': [
+            "Existe algo que está gerando incerteza sobre este assunto?",
+            "O que te ajudaria a sentir mais clareza nesta situação?"
+        ],
+        'submissa': [
+            "O que você realmente preferiria neste caso?",
+            "Se pudesse escolher livremente, qual seria sua opção?"
+        ],
+        'resistente': [
+            "Existe alguma preocupação específica com essa proposta?",
+            "O que seria necessário para tornar essa ideia mais aceitável?"
+        ]
+    }
+    
+    # Gerar perguntas para cada inconsistência
+    import random
+    for inconsistency in inconsistencies:
+        if inconsistency['type'] == 'rare_behavior':
+            behavior = inconsistency['behavior']
+            if behavior in behavior_questions:
+                reflective_questions.append(random.choice(behavior_questions[behavior]))
+        
+        elif inconsistency['type'] == 'rare_attitude':
+            attitude = inconsistency['attitude']
+            if attitude in attitude_questions:
+                reflective_questions.append(random.choice(attitude_questions[attitude]))
+    
+    # Limitar a 2 perguntas
+    reflective_questions = reflective_questions[:2]
+    
+    return {
+        'inconsistencies': inconsistencies,
+        'reflective_questions': reflective_questions
+    }
+4. Reforço de Participação Colaborativa
+python
+
+Copy
+def suggest_collaborative_engagement(self, message, context=None, profile_id=None):
+    """Sugere frases que despertam senso de contribuição em situações de indecisão ou afastamento"""
+    if not message or not profile_id:
+        return None
+    
+    profile = self.profiles.get(profile_id)
+    if not profile:
+        return None
+    
+    # Detectar sinais de indecisão ou afastamento
+    indecision_signals = False
+    disengagement_signals = False
+    
+    # Verificar comportamento e atitude
+    behavior = message.get('analysis', {}).get('behavioral_indicators', {}).get('dominant_pattern', {}).get('pattern')
+    if behavior in ['avoidance', 'reactive']:
+        disengagement_signals = True
+    
+    attitude = message.get('analysis', {}).get('attitude', {}).get('primary_attitude')
+    if attitude in ['evasiva', 'submissa']:
+        indecision_signals = True
+    
+    # Analisar conteúdo da mensagem
+    text = message.get('transcription') if message.get('content_type') == 'audio' and message.get('transcription') else message.get('content', '')
+    
+    # Marcadores linguísticos
+    indecision_markers = [
+        'não sei', 'talvez', 'pode ser', 'tanto faz', 'você decide', 'você escolhe',
+        'qualquer um', 'como preferir', 'não tenho preferência'
+    ]
+    
+    disengagement_markers = [
+        'depois vejo', 'mais tarde', 'quando puder', 'não tenho tempo',
+        'estou ocupado', 'verei depois', 'agora não dá'
+    ]
+    
+    if any(marker in text.lower() for marker in indecision_markers):
+        indecision_signals = True
+    
+    if any(marker in text.lower() for marker in disengagement_markers):
+        disengagement_signals = True
+    
+    if not indecision_signals and not disengagement_signals:
+        return None
+    
+    # Templates para indecisão
+    indecision_templates = [
+        "Sua perspectiva sobre {tema} seria muito valiosa para nossa decisão.",
+        "Sua experiência traz um ângulo importante que enriqueceria esta discussão sobre {tema}.",
+        "Acredito que você tem insights únicos sobre {tema} que poderiam nos ajudar.",
+        "Sua contribuição seria fundamental para chegarmos a uma solução ideal para {tema}."
+    ]
+    
+    # Templates para afastamento
+    disengagement_templates = [
+        "Sua participação em {tema} faz uma diferença significativa no resultado final.",
+        "O projeto de {tema} se beneficiaria muito com seu envolvimento, mesmo que breve.",
+        "Sua colaboração prévia em {tema} trouxe resultados excelentes que gostaríamos de replicar.",
+        "Percebo que quando você se envolve com {tema}, conseguimos avançar mais rapidamente."
+    ]
+    
+    # Determinar tema da conversa
+    tema = "este assunto"
+    if message.get('analysis', {}).get('themes'):
+        themes = message['analysis']['themes']
+        if themes:
+            tema = themes[0].replace('#', '')
+    
+    # Verificar contexto anterior
+    if context and 'previous_messages' in context:
+        for prev_msg in context['previous_messages']:
+            if 'themes' in prev_msg and prev_msg['themes']:
+                tema = prev_msg['themes'][0].replace('#', '')
+                break
+    
+    # Selecionar templates apropriados
+    import random
+    collaborative_suggestions = []
+    
+    if indecision_signals:
+        template = random.choice(indecision_templates)
+        collaborative_suggestions.append(template.format(tema=tema))
+    
+    if disengagement_signals:
+        template = random.choice(disengagement_templates)
+        collaborative_suggestions.append(template.format(tema=tema))
+    
+    # Personalização baseada em necessidade de aprovação
+    approval_need = profile.get('psychological_profile', {}).get('motivation_factors', {}).get('approval_need', {}).get('level')
+    
+    if approval_need == 'alta':
+        appreciation_templates = [
+            "Sempre valorizo muito suas contribuições em nossas discussões.",
+            "Suas ideias anteriores foram muito úteis e apreciadas."
+        ]
+        collaborative_suggestions.append(random.choice(appreciation_templates))
+    
+    return {
+        'collaborative_suggestions': collaborative_suggestions,
+        'signals': {
+            'indecision': indecision_signals,
+            'disengagement': disengagement_signals
+        }
+    }
+5. Intensificação de Vínculo Baseado em Responsividade
+python
+
+Copy
+def calibrate_affective_engagement(self, profile_id, recent_conversations=None, last_n_days=7):
+    """Ajusta a intensidade e frequência de frases afetivas com base na responsividade"""
+    if not profile_id or profile_id not in self.profiles:
+        return None
+    
+    profile = self.profiles[profile_id]
+    
+    # Se não houver conversas recentes, buscar análises recentes
+    if not recent_conversations:
+        recent_conversations = []
+        
+        if 'analyses' in profile:
+            # Calcular data limite
+            from datetime import datetime, timedelta
+            cutoff_date = (datetime.now() - timedelta(days=last_n_days)).isoformat()
+            
+            # Filtrar análises recentes
+            recent_analyses = [a for a in profile['analyses'] if a['timestamp'] >= cutoff_date]
+            
+            # Carregar conversas
+            for analysis in recent_analyses:
+                conversation_path = os.path.join(
+                    self.config["DATA_DIR"], 
+                    profile_id, 
+                    "conversations", 
+                    f"{analysis['id']}.json"
+                )
+                
+                if os.path.exists(conversation_path):
+                    try:
+                        with open(conversation_path, 'r', encoding='utf-8') as f:
+                            conv = json.load(f)
+                            recent_conversations.extend(conv)
+                    except Exception as e:
+                        logger.error(f"Erro ao carregar conversa {analysis['id']}: {e}")
+    
+    # Valores padrão se não houver dados suficientes
+    if not recent_conversations:
+        return {
+            'affective_intensity': 'moderada',
+            'affective_frequency': 0.3,  # 30% das mensagens
+            'reason': 'default_values'
+        }
+    
+    # Filtrar mensagens do perfil alvo
+    target_messages = [msg for msg in recent_conversations if msg.get('is_target', False)]
+    
+    if not target_messages:
+        return {
+            'affective_intensity': 'moderada',
+            'affective_frequency': 0.3,
+            'reason': 'no_target_messages'
+        }
+    
+    # Cálculo de métricas de responsividade
+    
+    # 1. Tempo médio de resposta
+    response_times = []
+    for msg in target_messages:
+        if msg.get('context', {}).get('conversation_state', {}).get('is_response'):
+            response_time = msg['context']['conversation_state'].get('response_time')
+            if response_time is not None:
+                response_times.append(response_time)
+    
+    avg_response_time = sum(response_times) / len(response_times) if response_times else None
+    
+    # 2. Taxa de resposta
+    messages_requiring_response = 0
+    messages_with_response = 0
+    
+    for i, msg in enumerate(recent_conversations):
+        if not msg.get('is_target', False) and i < len(recent_conversations) - 1:
+            messages_requiring_response += 1
+            
+            # Verificar se a próxima mensagem é uma resposta do alvo
+            next_msg = recent_conversations[i + 1]
+            if next_msg.get('is_target', False):
+                messages_with_response += 1
+    
+    response_rate = messages_with_response / messages_requiring_response if messages_requiring_response > 0 else 0
+    
+    # 3. Análise de atitudes
+    positive_attitudes = ['colaborativa']
+    negative_attitudes = ['resistente', 'evasiva']
+    
+    attitude_counts = {'positive': 0, 'negative': 0, 'neutral': 0}
+    
+    for msg in target_messages:
+        attitude = msg.get('analysis', {}).get('attitude', {}).get('primary_attitude')
+        if attitude in positive_attitudes:
+            attitude_counts['positive'] += 1
+        elif attitude in negative_attitudes:
+            attitude_counts['negative'] += 1
+        else:
+            attitude_counts['neutral'] += 1
+    
+    total_attitudes = sum(attitude_counts.values())
+    positive_attitude_rate = attitude_counts['positive'] / total_attitudes if total_attitudes > 0 else 0
+    negative_attitude_rate = attitude_counts['negative'] / total_attitudes if total_attitudes > 0 else 0
+    
+    # 4. Verificar abertura emocional
+    emotion_openness = profile.get('psychological_profile', {}).get('emotional_tendencies', {}).get('emotional_openness', {}).get('level', 'média')
+    
+    # Calibração da intensidade afetiva
+    base_intensity = {
+        'baixa': 'sutil',
+        'média': 'moderada',
+        'alta': 'alta'
+    }.get(emotion_openness, 'moderada')
+    
+    # Ajustar com base nas atitudes
+    if positive_attitude_rate > 0.6:  # Mais de 60% positivas
+        intensity = 'moderada' if base_intensity == 'sutil' else 'alta'
+    elif negative_attitude_rate > 0.6:  # Mais de 60% negativas
+        intensity = 'sutil' if base_intensity == 'alta' else 'moderada'
+    else:
+        intensity = base_intensity
+    
+    # Frequência de frases afetivas (base: 30%)
+    base_frequency = 0.3
+    
+    # Ajustar com base na taxa de resposta
+    if response_rate > 0.8:  # Taxa de resposta alta
+        frequency = base_frequency * 1.5  # Aumentar
+    elif response_rate < 0.5:  # Taxa de resposta baixa
+        frequency = base_frequency * 0.7  # Diminuir
+    else:
+        frequency = base_frequency
+    
+    # Limitar entre 10% e 80%
+    frequency = max(0.1, min(0.8, frequency))
+    
+    # Resultado final
+    result = {
+        'affective_intensity': intensity,
+        'affective_frequency': frequency,
+        'metrics': {
+            'avg_response_time': avg_response_time,
+            'response_rate': response_rate,
+            'positive_attitude_rate': positive_attitude_rate,
+            'negative_attitude_rate': negative_attitude_rate,
+            'emotional_openness': emotion_openness
+        },
+        'reason': 'calibrated'
+    }
+    
+    # Atualizar perfil
+    if 'communication_patterns' not in profile:
+        profile['communication_patterns'] = {}
+    
+    profile['communication_patterns']['affective_calibration'] = {
+        'intensity': intensity,
+        'frequency': frequency,
+        'last_updated': datetime.now().isoformat()
+    }
+    
+    self.update_profile(profile_id, profile)
+    
+    return result
+6. Reconhecimento Direcionado por Mérito
+python
+
+Copy
+def generate_merit_based_recognition(self, message, profile_id):
+    """Gera reconhecimento apenas quando padrões positivos genuínos são detectados"""
+    if not message or not profile_id:
+        return None
+    
+    profile = self.profiles.get(profile_id)
+    if not profile:
+        return None
+    
+    # Verificar padrões meritórios
+    merit_indicators = []
+    
+    # 1. Comportamento colaborativo ou proativo
+    behavior = message.get('analysis', {}).get('behavioral_indicators', {}).get('dominant_pattern', {}).get('pattern')
+    if behavior in ['proactive', 'collaborative']:
+        merit_indicators.append({
+            'type': 'behavior',
+            'value': behavior
+        })
+    
+    # 2. Atitude colaborativa forte
+    attitude = message.get('analysis', {}).get('attitude', {}).get('primary_attitude')
+    attitude_strength = message.get('analysis', {}).get('attitude', {}).get('strength', 0)
+    
+    if attitude == 'colaborativa' and attitude_strength > 7:
+        merit_indicators.append({
+            'type': 'attitude',
+            'value': attitude,
+            'strength': attitude_strength
+        })
+    
+    # 3. Respostas mais rápidas que a média histórica
+    response_time = message.get('context', {}).get('conversation_state', {}).get('response_time')
+    avg_historical_time = profile.get('communication_stats', {}).get('avg_response_time')
+    
+    if response_time and avg_historical_time and response_time < (avg_historical_time * 0.7):
+        merit_indicators.append({
+            'type': 'response_time',
+            'value': response_time,
+            'historical_avg': avg_historical_time
+        })
+    
+    # 4. Expressão de ideias construtivas
+    text = message.get('transcription') if message.get('content_type') == 'audio' and message.get('transcription') else message.get('content', '')
+    
+    solution_markers = [
+        'sugerir', 'sugiro', 'propor', 'proponho', 'ideia', 'solução', 'resolver',
+        'alternativa', 'opção', 'posso fazer', 'poderíamos', 'podemos'
+    ]
+    
+    if any(marker in text.lower() for marker in solution_markers):
+        merit_indicators.append({
+            'type': 'constructive_solution',
+            'value': True
+        })
+    
+    # 5. Superação de comportamentos desafiadores anteriores
+    if 'behavioral_patterns' in profile:
+        historical_challenges = []
+        
+        comm_style = profile.get('behavioral_patterns', {}).get('communication_style', {})
+        if comm_style:
+            for pattern, value in comm_style.items():
+                if pattern in ['avoidance', 'reactive'] and value > 0.3:
+                    historical_challenges.append(pattern)
+        
+        if behavior and behavior not in historical_challenges and historical_challenges:
+            merit_indicators.append({
+                'type': 'pattern_improvement',
+                'value': behavior,
+                'historical_challenges': historical_challenges
+            })
+    
+    # Se não houver indicadores meritórios, não oferecer reconhecimento
+    if not merit_indicators:
+        return None
+    
+    # Templates de reconhecimento por tipo de mérito
+    import random
+    recognition_phrases = []
+    
+    merit_templates = {
+        'behavior': [
+            "Sua abordagem proativa nesta situação é realmente admirável.",
+            "Aprecio muito sua disposição para colaborar de forma tão efetiva.",
+            "A maneira como você abordou este assunto demonstra excelente iniciativa."
+        ],
+        'attitude': [
+            "Sua atitude colaborativa faz uma diferença significativa em nossos resultados.",
+            "É notável como sua abordagem construtiva facilita o progresso deste projeto.",
+            "Valorizo muito sua disposição para encontrar soluções em vez de apenas apontar problemas."
+        ],
+        'response_time': [
+            "Agradeço sua resposta rápida, que nos permitiu avançar com agilidade.",
+            "Sua prontidão em responder a esta questão foi extremamente útil.",
+            "A velocidade com que você atendeu a esta solicitação fez toda a diferença."
+        ],
+        'constructive_solution': [
+            "Sua sugestão traz exatamente o tipo de perspectiva construtiva que precisávamos.",
+            "A solução que você propôs demonstra uma compreensão profunda da situação.",
+            "A ideia que você compartilhou é exatamente o tipo de contribuição que agrega valor real."
+        ],
+        'pattern_improvement': [
+            "Tenho notado uma evolução significativa em sua abordagem que está trazendo resultados excelentes.",
+            "A maneira como você tem lidado com estes desafios recentemente demonstra um crescimento impressionante.",
+            "É notável como sua nova abordagem está criando um impacto positivo em todo o processo."
+        ]
+    }
+    
+    # Selecionar até 2 reconhecimentos de tipos diferentes
+    selected_types = []
+    for indicator in merit_indicators:
+        merit_type = indicator['type']
+        
+        if merit_type in selected_types:
+            continue
+            
+        selected_types.append(merit_type)
+        
+        if merit_type in merit_templates:
+            recognition_phrases.append(random.choice(merit_templates[merit_type]))
+            
+        if len(recognition_phrases) >= 2:
+            break
+    
+    return {
+        'recognition_phrases': recognition_phrases,
+        'merit_indicators': merit_indicators
+    }
+7. Realce de Expectativas Construtivas por Referência Positiva
+python
+
+Copy
+def generate_positive_references(self, profile_id, current_context):
+    """Gera comparações e referências a comportamentos passados positivos"""
+    if not profile_id or not current_context:
+        return None
+    
+    profile = self.profiles.get(profile_id)
+    if not profile:
+        return None
+    
+    # Extrair tema atual
+    current_theme = None
+    if 'themes' in current_context and current_context['themes']:
+        current_theme = current_context['themes'][0].replace('#', '')
+    
+    # Buscar exemplos positivos anteriores
+    positive_examples = []
+    
+    if 'analyses' in profile:
+        for analysis in profile['analyses']:
+            conversation_path = os.path.join(
+                self.config["DATA_DIR"], 
+                profile_id, 
+                "conversations", 
+                f"{analysis['id']}.json"
+            )
+            
+            if not os.path.exists(conversation_path):
+                continue
+            
+            try:
+                with open(conversation_path, 'r', encoding='utf-8') as f:
+                    conversation = json.load(f)
+                
+                target_messages = [msg for msg in conversation if msg.get('is_target', False)]
+                
+                for msg in target_messages:
+                    # Verificar mensagens com comportamento positivo
+                    behavior = msg.get('analysis', {}).get('behavioral_indicators', {}).get('dominant_pattern', {}).get('pattern')
+                    attitude = msg.get('analysis', {}).get('attitude', {}).get('primary_attitude')
+                    
+                    is_positive = (behavior in ['proactive', 'collaborative']) or (attitude == 'colaborativa')
+                    
+                    # Verificar tema correspondente
+                    has_matching_theme = False
+                    if not current_theme:
+                        has_matching_theme = True
+                    elif 'themes' in msg.get('analysis', {}):
+                        msg_themes = [t.replace('#', '') for t in msg['analysis']['themes']]
+                        has_matching_theme = current_theme in msg_themes
+                    
+                    if is_positive and has_matching_theme:
+                        content = msg.get('transcription') if msg.get('content_type') == 'audio' and msg.get('transcription') else msg.get('content', '')
+                        
+                        positive_examples.append({
+                            'type': 'self_reference',
+                            'content': content,
+                            'behavior': behavior,
+                            'attitude': attitude,
+                            'theme': current_theme if has_matching_theme else None,
+                            'timestamp': msg.get('datetime')
+                        })
+            
+            except Exception as e:
+                logger.error(f"Erro ao carregar conversa {analysis['id']}: {e}")
+    
+    # Ordenar por recência
+    positive_examples = sorted(positive_examples, key=lambda x: x.get('timestamp', ''), reverse=True)[:3]
+    
+    # Complementar com exemplos genéricos se necessário
+    if len(positive_examples) < 2:
+        generic_examples = [
+            {
+                'type': 'generic_reference',
+                'behavior': 'proactive',
+                'theme': current_theme,
+                'description': f"contribuição proativa em {current_theme or 'projetos anteriores'}"
+            },
+            {
+                'type': 'peer_reference',
+                'behavior': 'collaborative',
+                'theme': current_theme,
+                'description': f"abordagem colaborativa utilizada em {current_theme or 'situações semelhantes'}"
+            }
+        ]
+        
+        # Adicionar exemplos genéricos
+        import random
+        while len(positive_examples) < 2:
+            positive_examples.append(random.choice(generic_examples))
+    
+    # Templates para cada tipo de referência
+    self_reference_templates = [
+        "Como você demonstrou anteriormente em {theme}, sua abordagem {behavior_adj} trouxe resultados excelentes.",
+        "Sua capacidade de {behavior_verb} que você mostrou em ocasiões anteriores relacionadas a {theme} foi muito eficaz.",
+        "A maneira {behavior_adj} como você lidou com {theme} no passado foi um excelente exemplo que poderíamos aplicar agora."
+    ]
+    
+    generic_reference_templates = [
+        "Uma abordagem {behavior_adj} como a que você já demonstrou em outros momentos seria valiosa nesta situação de {theme}.",
+        "O tipo de {behavior_noun} que tem funcionado bem em situações de {theme} poderia ser aplicado aqui.",
+        "Sua habilidade para {behavior_verb} seria particularmente útil neste contexto de {theme}."
+    ]
+    
+    peer_reference_templates = [
+        "Temos visto como uma abordagem {behavior_adj} tem sido eficaz para outros em situações de {theme}.",
+        "O tipo de {behavior_noun} que tem gerado resultados positivos em contextos semelhantes de {theme} envolve {behavior_verb}.",
+        "Colegas que enfrentaram desafios semelhantes em {theme} conseguiram avanços significativos ao {behavior_verb}."
+    ]
+    
+    # Mapeamento de linguagem
+    behavior_language = {
+        'proactive': {
+            'adj': 'proativa',
+            'verb': 'tomar iniciativa',
+            'noun': 'proatividade'
+        },
+        'collaborative': {
+            'adj': 'colaborativa',
+            'verb': 'trabalhar em conjunto',
+            'noun': 'colaboração'
+        },
+    }
+    
+    attitude_language = {
+        'colaborativa': {
+            'adj': 'cooperativa',
+            'verb': 'cooperar',
+            'noun': 'cooperação'
+        }
+    }
+    
+    # Gerar frases de referência
+    reference_phrases = []
+    
+    for example in positive_examples[:2]:
+        template = None
+        
+        if example['type'] == 'self_reference':
+            template = random.choice(self_reference_templates)
+            
+            # Determinar linguagem apropriada
+            if example['behavior'] in behavior_language:
+                language = behavior_language[example['behavior']]
+            elif example['attitude'] in attitude_language:
+                language = attitude_language[example['attitude']]
+            else:
+                language = {'adj': 'eficaz', 'verb': 'abordar questões', 'noun': 'abordagem'}
+            
+            theme = example['theme'] or "situações anteriores"
+            
+            reference_phrases.append(template.format(
+                theme=theme,
+                behavior_adj=language['adj'],
+                behavior_verb=language['verb'],
+                behavior_noun=language['noun']
+            ))
+            
+        elif example['type'] == 'generic_reference':
+            template = random.choice(generic_reference_templates)
+            language = behavior_language.get(example['behavior'], {'adj': 'eficaz', 'verb': 'abordar questões', 'noun': 'abordagem'})
+            theme = example['theme'] or "contextos semelhantes"
+            
+            reference_phrases.append(template.format(
+                theme=theme,
+                behavior_adj=language['adj'],
+                behavior_verb=language['verb'],
+                behavior_noun=language['noun']
+            ))
+            
+        elif example['type'] == 'peer_reference':
+            template = random.choice(peer_reference_templates)
+            language = behavior_language.get(example['behavior'], {'adj': 'eficaz', 'verb': 'abordar questões colaborativamente', 'noun': 'abordagem'})
+            theme = example['theme'] or "contextos semelhantes"
+            
+            reference_phrases.append(template.format(
+                theme=theme,
+                behavior_adj=language['adj'],
+                behavior_verb=language['verb'],
+                behavior_noun=language['noun']
+            ))
+    
+    return {
+        'reference_phrases': reference_phrases,
+        'examples_found': len(positive_examples)
+    }
+8. Reforço de Referências Positivas Anteriores
+python
+
+Copy
+def reinforce_positive_experiences(self, profile_id, current_context):
+    """Identifica e reforça experiências positivas anteriores para consolidar padrões positivos"""
+    if not profile_id or not current_context:
+        return None
+    
+    profile = self.profiles.get(profile_id)
+    if not profile:
+        return None
+    
+    # Extrair tema atual
+    current_theme = None
+    if 'themes' in current_context and current_context['themes']:
+        current_theme = current_context['themes'][0].replace('#', '')
+    
+    # Buscar interações anteriores positivas
+    positive_experiences = []
+    
+    if 'analyses' in profile:
+        # Até 10 análises mais recentes, em ordem reversa
+        for analysis in sorted(profile['analyses'], key=lambda x: x['timestamp'], reverse=True)[:10]:
+            # Verificar recomendações da análise com menções positivas
+            if 'summary' in analysis and 'recommendations' in analysis['summary']:
+                for rec in analysis['summary']['recommendations'].get('general', []):
+                    if any(term in rec.lower() for term in ['sucesso', 'eficaz', 'positiv', 'bem-sucedid', 'funcionou bem']):
+                        positive_experiences.append({
+                            'type': 'recommendation',
+                            'content': rec,
+                            'timestamp': analysis['timestamp'],
+                            'reference': f"análise de {datetime.fromisoformat(analysis['timestamp']).strftime('%d/%m/%Y')}"
+                        })
+            
+            # Buscar interações específicas positivas
+            conversation_path = os.path.join(
+                self.config["DATA_DIR"], 
+                profile_id, 
+                "conversations", 
+                f"{analysis['id']}.json"
+            )
+            
+            if not os.path.exists(conversation_path):
+                continue
+            
+            try:
+                with open(conversation_path, 'r', encoding='utf-8') as f:
+                    conversation = json.load(f)
+                
+                # Buscar reconhecimentos positivos
+                for i, msg in enumerate(conversation):
+                    # Se não é mensagem do alvo e contém termos de reconhecimento
+                    if not msg.get('is_target', False):
+                        text = msg.get('content', '').lower()
+                        
+                        if any(term in text for term in ['parabéns', 'excelente', 'ótimo trabalho', 'muito bom', 'agradeço']):
+                            # Verificar se há resposta do alvo
+                            if i < len(conversation) - 1 and conversation[i+1].get('is_target', False):
+                                next_msg = conversation[i+1]
+                                
+                                # Extrair tema se disponível
+                                msg_theme = None
+                                if 'analysis' in next_msg and 'themes' in next_msg['analysis'] and next_msg['analysis']['themes']:
+                                    msg_theme = next_msg['analysis']['themes'][0].replace('#', '')
+                                
+                                # Só adicionar se compatível com tema atual
+                                if not current_theme or not msg_theme or current_theme == msg_theme:
+                                    positive_experiences.append({
+                                        'type': 'interaction',
+                                        'content': f"reconhecimento recebido em conversa sobre {msg_theme or 'assunto anterior'}",
+                                        'context': msg.get('content'),
+                                        'response': next_msg.get('content') or next_msg.get('transcription', ''),
+                                        'timestamp': next_msg.get('datetime'),
+                                        'theme': msg_theme
+                                    })
+            
+            except Exception as e:
+                logger.error(f"Erro ao carregar conversa {analysis['id']}: {e}")
+    
+    # Se não houver experiências específicas, usar referências gerais
+    if not positive_experiences:
+        behavioral_patterns = profile.get('behavioral_patterns', {})
+        communication_style = behavioral_patterns.get('communication_style', {})
+        
+        if communication_style:
+            if communication_style.get('proactive', 0) > 0.3 or communication_style.get('collaborative', 0) > 0.3:
+                positive_experiences.append({
+                    'type': 'profile_pattern',
+                    'content': "tendência para abordagens proativas e colaborativas",
+                    'behavior': 'proactive' if communication_style.get('proactive', 0) > communication_style.get('collaborative', 0) else 'collaborative'
+                })
+            
+        # Verificar atitudes no histórico
+        attitude_dist = profile.get('communication_stats', {}).get('attitude_distribution', {})
+        if attitude_dist and attitude_dist.get('colaborativa', 0) > 0.3:
+            positive_experiences.append({
+                'type': 'profile_pattern',
+                'content': "histórico de atitudes colaborativas",
+                'attitude': 'colaborativa'
+            })
+    
+    # Se ainda não houver experiências positivas, não podemos fornecer reforço
+    if not positive_experiences:
+        return None
+    
+    # Priorizar experiências relacionadas ao tema atual
+    themed_experiences = [exp for exp in positive_experiences if exp.get('theme') == current_theme]
+    
+    if themed_experiences:
+        selected_experiences = themed_experiences[:2]
+    else:
+        # Ordenar por recência
+        sorted_experiences = sorted(positive_experiences, key=lambda x: x.get('timestamp', ''), reverse=True)
+        selected_experiences = sorted_experiences[:2]
+    
+    # Templates por tipo de experiência
+    import random
+    reinforcement_phrases = []
+    
+    recommendation_templates = [
+        "Como observamos anteriormente, {content}",
+        "Retomando o que analisamos antes, {content}",
+        "Em sintonia com o que já havíamos identificado, {content}"
+    ]
+    
+    interaction_templates = [
+        "Em situação anterior, sua abordagem para {theme} recebeu reconhecimento positivo.",
+        "Como demonstrado anteriormente em conversa sobre {theme}, sua contribuição foi muito bem recebida.",
+        "Retomando um ponto forte seu: em discussão anterior sobre {theme}, sua perspectiva trouxe valor significativo."
+    ]
+    
+    profile_templates = [
+        "Seu histórico de {content} é um diferencial importante que podemos aproveitar neste momento.",
+        "Sua tendência natural para {content} pode ser particularmente valiosa nesta situação.",
+        "Algo que tenho observado consistentemente é sua capacidade para {content}, que seria muito útil agora."
+    ]
+    
+    for experience in selected_experiences:
+        exp_type = experience['type']
+        
+        if exp_type == 'recommendation':
+            template = random.choice(recommendation_templates)
+            content = experience['content'].lower()
+            # Reescrever para terceira pessoa se estiver em segunda
+            content = content.replace("você deve", "seria benéfico")
+            content = content.replace("use ", "usar ")
+            reinforcement_phrases.append(template.format(content=content))
+            
+        elif exp_type == 'interaction':
+            template = random.choice(interaction_templates)
+            theme = experience.get('theme', 'um assunto importante')
+            reinforcement_phrases.append(template.format(theme=theme))
+            
+        elif exp_type == 'profile_pattern':
+            template = random.choice(profile_templates)
+            content = experience['content']
+            reinforcement_phrases.append(template.format(content=content))
+    
+    return {
+        'reinforcement_phrases': reinforcement_phrases,
+        'experiences_found': len(positive_experiences)
+    }
+9. Alternância de Estilos de Comunicação Contextual
+python
+
+Copy
+def adapt_communication_style(self, message, profile_id, previous_interactions=None):
+    """Determina o estilo de comunicação mais adequado com base no contexto atual"""
+    if not message or not profile_id:
+        return None
+    
+    profile = self.profiles.get(profile_id)
+    if not profile:
+        return None
+    
+    # Definir estilos de comunicação disponíveis
+    communication_styles = {
+        'direto': {
+            'description': 'Comunicação clara e objetiva, com instruções diretas',
+            'characteristics': ['conciso', 'objetivo', 'estruturado', 'prático'],
+            'examples': [
+                "Precisamos definir os próximos passos. Sugiro que {ação_principal}.",
+                "Para avançarmos, é necessário {ação_principal}.",
+                "Vamos focar na solução. O mais eficiente seria {ação_principal}."
+            ]
+        },
+        'acolhedor': {
+            'description': 'Comunicação empática, priorizando o bem-estar emocional',
+            'characteristics': ['empático', 'compreensivo', 'caloroso', 'receptivo'],
+            'examples': [
+                "Entendo como você se sente. Talvez possamos {ação_principal} de um jeito que funcione para todos.",
+                "Quero que saiba que estou aqui para apoiar. Podemos {ação_principal} juntos.",
+                "Compreendo suas preocupações. Vamos {ação_principal} considerando suas necessidades."
+            ]
+        },
+        'técnico': {
+            'description': 'Comunicação precisa com terminologia específica e detalhamento',
+            'characteristics': ['preciso', 'detalhado', 'analítico', 'informativo'],
+            'examples': [
+                "De acordo com nossa análise, o procedimento adequado seria {ação_principal}, conforme especificações.",
+                "Os dados indicam que devemos {ação_principal}, seguindo o protocolo estabelecido.",
+                "A metodologia recomendada consiste em {ação_principal}, garantindo conformidade."
+            ]
+        },
+        'colaborativo': {
+            'description': 'Comunicação participativa, incentivando contribuições conjuntas',
+            'characteristics': ['inclusivo', 'participativo', 'construtivo', 'aberto'],
+            'examples': [
+                "Poderíamos juntos desenvolver uma abordagem para {ação_principal}. O que você acha?",
+                "Que tal trabalharmos em conjunto para {ação_principal}? Suas ideias seriam valiosas.",
+                "Se unirmos nossas perspectivas, conseguiremos {ação_principal} mais eficazmente."
+            ]
+        },
+        'motivador': {
+            'description': 'Comunicação entusiasta e inspiradora, com foco em possibilidades',
+            'characteristics': ['entusiasta', 'inspirador', 'positivo', 'energético'],
+            'examples': [
+                "Tenho certeza que você conseguirá {ação_principal} com excelência! Seu potencial é incrível.",
+                "Esta é uma oportunidade fantástica para {ação_principal}! Estou entusiasmado pelos resultados.",
+                "Vamos transformar este desafio em conquista! Juntos podemos {ação_principal}."
+            ]
+        }
+    }
+    
+    # Analisar o contexto para determinar o estilo apropriado
+    
+    # 1. Estado emocional atual
+    emotional_state = None
+    if message.get('analysis', {}).get('emotion', {}).get('primary_emotion'):
+        emotion = message['analysis']['emotion']['primary_emotion']
+        
+        if emotion in ['hesitação', 'ansiedade', 'tensão', 'tristeza']:
+            emotional_state = 'vulnerável'
+        elif emotion in ['frustração', 'irritação']:
+            emotional_state = 'resistente'
+        elif emotion in ['entusiasmo', 'confiança', 'contentamento']:
+            emotional_state = 'receptivo'
+        else:
+            emotional_state = 'neutro'
+    
+    # 2. Comportamento atual
+    behavior_state = None
+    behavior = message.get('analysis', {}).get('behavioral_indicators', {}).get('dominant_pattern', {}).get('pattern')
+    
+    if behavior:
+        if behavior in ['avoidance', 'conflict', 'reactive']:
+            behavior_state = 'defensivo'
+        elif behavior in ['proactive', 'collaborative']:
+            behavior_state = 'engajado'
+        elif behavior in ['control', 'status_focused']:
+            behavior_state = 'assertivo'
+        elif behavior in ['approval_seeking', 'emotional']:
+            behavior_state = 'afiliativo'
+        else:
+            behavior_state = 'neutro'
+    
+    # 3. Atitude atual
+    attitude_state = None
+    attitude = message.get('analysis', {}).get('attitude', {}).get('primary_attitude')
+    
+    if attitude:
+        if attitude in ['evasiva', 'submissa']:
+            attitude_state = 'retraído'
+        elif attitude in ['colaborativa']:
+            attitude_state = 'cooperativo'
+        elif attitude in ['resistente', 'autoritária']:
+            attitude_state = 'resistente'
+        else:
+            attitude_state = 'neutro'
+    
+    # 4. Contexto do tema
+    theme_context = None
+    if message.get('analysis', {}).get('themes'):
+        themes = message['analysis']['themes']
+        
+        if any(theme in ['#plantao', '#documentacao'] for theme in themes):
+            theme_context = 'profissional'
+        elif any(theme in ['#problema', '#pagamento'] for theme in themes):
+            theme_context = 'sensível'
+        elif any(theme in ['#reconhecimento', '#pessoal'] for theme in themes):
+            theme_context = 'pessoal'
+        else:
+            theme_context = 'geral'
+    
+    # 5. Histórico recente (se disponível)
+    recent_style = None
+    if previous_interactions and len(previous_interactions) > 0:
+        for interaction in previous_interactions:
+            if 'communication_style' in interaction and 'response_type' in interaction:
+                if interaction['response_type'] == 'positive':
+                    recent_style = interaction['communication_style']
+                    break
+    
+    # Matriz de decisão: mapeia combinações de estados para estilos
+    style_matrix = {
+        ('vulnerável', 'defensivo'): 'acolhedor',
+        ('vulnerável', 'engajado'): 'colaborativo',
+        ('vulnerável', 'assertivo'): 'acolhedor',
+        ('vulnerável', 'afiliativo'): 'acolhedor',
+        ('vulnerável', 'neutro'): 'acolhedor',
+        
+        ('resistente', 'defensivo'): 'direto',
+        ('resistente', 'engajado'): 'técnico',
+        ('resistente', 'assertivo'): 'técnico',
+        ('resistente', 'afiliativo'): 'colaborativo',
+        ('resistente', 'neutro'): 'direto',
+        
+        ('receptivo', 'defensivo'): 'colaborativo',
+        ('receptivo', 'engajado'): 'motivador',
+        ('receptivo', 'assertivo'): 'colaborativo',
+        ('receptivo', 'afiliativo'): 'motivador',
+        ('receptivo', 'neutro'): 'colaborativo',
+        
+        ('neutro', 'defensivo'): 'direto',
+        ('neutro', 'engajado'): 'colaborativo',
+        ('neutro', 'assertivo'): 'técnico',
+        ('neutro', 'afiliativo'): 'acolhedor',
+        ('neutro', 'neutro'): 'direto'
+    }
+    
+    # Ajustes baseados na atitude
+    attitude_adjustments = {
+        'retraído': {
+            'direto': 'acolhedor',
+            'técnico': 'colaborativo'
+        },
+        'cooperativo': {
+            'direto': 'colaborativo',
+            'técnico': 'colaborativo'
+        },
+        'resistente': {
+            'acolhedor': 'direto',
+            'colaborativo': 'técnico'
+        }
+    }
+    
+    # Ajustes baseados no contexto do tema
+    theme_adjustments = {
+        'profissional': {
+            'acolhedor': 'técnico',
+            'motivador': 'colaborativo'
+        },
+        'sensível': {
+            'direto': 'acolhedor',
+            'motivador': 'colaborativo'
+        },
+        'pessoal': {
+            'técnico': 'acolhedor',
+            'direto': 'colaborativo'
+        }
+    }
+    
+    # 1. Estilo base da matriz
+    base_style = 'direto'  # estilo padrão
+    
+    if emotional_state and behavior_state:
+        key = (emotional_state, behavior_state)
+        if key in style_matrix:
+            base_style = style_matrix[key]
+    
+    # 2. Ajustar com base na atitude
+    if attitude_state and attitude_state in attitude_adjustments:
+        adjustments = attitude_adjustments[attitude_state]
+        if base_style in adjustments:
+            base_style = adjustments[base_style]
+    
+    # 3. Ajustar com base no tema
+    if theme_context and theme_context in theme_adjustments:
+        adjustments = theme_adjustments[theme_context]
+        if base_style in adjustments:
+            base_style = adjustments[base_style]
+    
+    # 4. Considerar histórico recente
+    if recent_style:
+        # Se houve resposta positiva a um estilo recentemente, 50% de chance de mantê-lo
+        import random
+        if random.random() < 0.5:
+            base_style = recent_style
+    
+    # 5. Considerar preferências do perfil
+    if 'communication_preferences' in profile.get('psychological_profile', {}):
+        preferences = profile['psychological_profile']['communication_preferences']
+        
+        if 'preferred_style' in preferences:
+            preferred_style = preferences['preferred_style']
+            if preferred_style in communication_styles:
+                # 75% de chance de usar a preferência
+                import random
+                if random.random() < 0.75:
+                    base_style = preferred_style
+    
+    # Obter detalhes do estilo selecionado
+    selected_style = communication_styles.get(base_style, communication_styles['direto'])
+    
+    return {
+        'recommended_style': base_style,
+        'style_details': selected_style,
+        'context_analysis': {
+            'emotional_state': emotional_state,
+            'behavior_state': behavior_state,
+            'attitude_state': attitude_state,
+            'theme_context': theme_context,
+            'recent_effective_style': recent_style
+        }
+    }
+10. Introduções com Sugestões Positivas
+python
+
+Copy
+def generate_positive_openers(self, context, profile_id):
+    """Gera introduções com sugestões positivas sutis para estados mentais construtivos"""
+    if not context or not profile_id:
+        return None
+    
+    profile = self.profiles.get(profile_id)
+    if not profile:
+        return None
+    
+    # Obter tema atual
+    theme = None
+    if 'themes' in context and context['themes']:
+        theme = context['themes'][0].replace('#', '')
+    
+    # Identificar necessidades específicas baseadas no perfil
+    psychological_needs = []
+    
+    if 'psychological_profile' in profile:
+        psych_profile = profile['psychological_profile']
+        
+        # Necessidade de aprovação
+        if ('motivation_factors' in psych_profile and 
+            'approval_need' in psych_profile['motivation_factors'] and
+            psych_profile['motivation_factors']['approval_need'].get('level') == 'alta'):
+            psychological_needs.append('approval')
+        
+        # Baixa tolerância a incertezas
+        if ('cognitive_patterns' in psych_profile and 
+            'uncertainty_tolerance' in psych_profile['cognitive_patterns'] and
+            psych_profile['cognitive_patterns']['uncertainty_tolerance'].get('level') == 'baixa'):
+            psychological_needs.append('certainty')
+        
+        # Necessidade de controle
+        if ('motivation_factors' in psych_profile and 
+            'control_need' in psych_profile['motivation_factors'] and
+            psych_profile['motivation_factors']['control_need'].get('level') == 'alta'):
+            psychological_needs.append('control')
+        
+        # Alta vulnerabilidade
+        if ('emotional_tendencies' in psych_profile and 
+            'vulnerability' in psych_profile['emotional_tendencies'] and
+            psych_profile['emotional_tendencies']['vulnerability'].get('level') == 'alta'):
+            psychological_needs.append('safety')
+    
+    # Verificar comportamentos a estimular
+    desired_behaviors = []
+    
+    if 'behavioral_patterns' in profile:
+        behavioral = profile['behavioral_patterns']
+        comm_style = behavioral.get('communication_style', {})
+        
+        if comm_style.get('proactive', 0) < 0.3:
+            desired_behaviors.append('proactivity')
+        
+        if comm_style.get('collaborative', 0) < 0.3:
+            desired_behaviors.append('collaboration')
+    
+    # Verificar atitudes a estimular
+    desired_attitudes = []
+    
+    if 'communication_stats' in profile:
+        attitude_dist = profile['communication_stats'].get('attitude_distribution', {})
+        
+        if attitude_dist.get('colaborativa', 0) < 0.3:
+            desired_attitudes.append('collaborative')
+        
+        if attitude_dist.get('assertiva', 0) < 0.2:
+            desired_attitudes.append('assertive')
+    
+    # Templates de introduções positivas
+    
+    # Templates gerais
+    general_openers = [
+        "Apreciando sua atenção a este assunto, gostaria de discutir {tema}.",
+        "Valorizando sua perspectiva, vamos conversar sobre {tema}.",
+        "Reconhecendo sua experiência, gostaria de abordar {tema}.",
+        "Considerando sua habilidade para lidar com situações como esta, vamos falar sobre {tema}."
+    ]
+    
+    # Templates por necessidade psicológica
+    psychological_openers = {
+        'approval': [
+            "Seu trabalho neste projeto tem sido muito valioso. Em relação a {tema}...",
+            "Tenho observado sua dedicação consistente. Sobre {tema}...",
+            "Sua contribuição tem feito diferença significativa. Agora, sobre {tema}..."
+        ],
+        'certainty': [
+            "Para mantermos o planejamento claro, vamos definir os próximos passos para {tema}.",
+            "Para garantir um processo estruturado, podemos estabelecer diretrizes para {tema}.",
+            "Para assegurar previsibilidade, vamos delinear como abordaremos {tema}."
+        ],
+        'control': [
+            "Você tem total autonomia para definir como prefere conduzir {tema}.",
+            "Respeitando seu critério de decisão, gostaria de ouvir sua abordagem para {tema}.",
+            "Confiando em sua capacidade de gerenciar este processo, vamos discutir {tema}."
+        ],
+        'safety': [
+            "Em um ambiente de total confiança, podemos conversar abertamente sobre {tema}.",
+            "Com o compromisso de apoio mútuo, gostaria de abordar {tema}.",
+            "Dentro de nossa parceria de colaboração, podemos explorar soluções para {tema}."
+        ]
+    }
+    
+    # Templates por comportamento desejado
+    behavior_openers = {
+        'proactivity': [
+            "Iniciativas como as que você já demonstrou seriam valiosas para resolver {tema}.",
+            "Sua capacidade de antecipar soluções seria excelente aplicada a {tema}.",
+            "Ao tomar a frente neste processo, poderíamos avançar rapidamente em {tema}."
+        ],
+        'collaboration': [
+            "Unindo nossas perspectivas, podemos encontrar a melhor solução para {tema}.",
+            "Trabalhando em conjunto, como tem sido produtivo anteriormente, podemos resolver {tema}.",
+            "Combinando nossos conhecimentos complementares, vamos abordar {tema}."
+        ]
+    }
+    
+    # Templates por atitude desejada
+    attitude_openers = {
+        'collaborative': [
+            "Em espírito de cooperação, gostaria de discutir {tema} com você.",
+            "Buscando uma solução que beneficie a todos, vamos conversar sobre {tema}.",
+            "Construindo um entendimento comum, podemos avançar em {tema}."
+        ],
+        'assertive': [
+            "Sua opinião clara será fundamental para definirmos o melhor caminho para {tema}.",
+            "Uma perspectiva direta como a sua ajudaria muito a resolver {tema}.",
+            "Decisões objetivas, que você sabe tomar, serão importantes para {tema}."
+        ]
+    }
+    
+    # Selecionar templates apropriados
+    appropriate_templates = []
+    import random
+    
+    # Priorizar necessidades psicológicas
+    if psychological_needs:
+        primary_need = random.choice(psychological_needs)
+        
+        if primary_need in psychological_openers:
+            appropriate_templates.extend(psychological_openers[primary_need])
+    
+    # Adicionar templates para comportamentos desejados
+    if desired_behaviors and len(appropriate_templates) < 5:
+        primary_behavior = random.choice(desired_behaviors)
+        
+        if primary_behavior in behavior_openers:
+            appropriate_templates.extend(behavior_openers[primary_behavior])
+    
+    # Adicionar templates para atitudes desejadas
+    if desired_attitudes and len(appropriate_templates) < 5:
+        primary_attitude = random.choice(desired_attitudes)
+        
+        if primary_attitude in attitude_openers:
+            appropriate_templates.extend(attitude_openers[primary_attitude])
+    
+    # Se não houver templates específicos suficientes, adicionar gerais
+    if len(appropriate_templates) < 3:
+        appropriate_templates.extend(general_openers)
+    
+    # Limitar a 5 templates
+    appropriate_templates = appropriate_templates[:5]
+    
+    # Substituir placeholders
+    theme_text = theme or "este assunto"
+    openers = [template.format(tema=theme_text) for template in appropriate_templates]
+    
+    return {
+        'positive_openers': openers,
+        'identified_needs': {
+            'psychological': psychological_needs,
+            'behaviors': desired_behaviors,
+            'attitudes': desired_attitudes
+        },
+        'current_theme': theme_text
+    }
+Função Integradora
+python
+
+Copy
+def analyze_and_refine_communication(self, message, profile_id, conversation_context=None, previous_style_responses=None):
+    """
+    Função integradora que combina todos os módulos para análise completa e recomendações
+    """
+    if not message or not profile_id or profile_id not in self.profiles:
+        return None
+    
+    # Resultados de cada módulo
+    results = {}
+    
+    # 1. Perfil de Complexidade Comunicacional
+    if conversation_context and 'conversation' in conversation_context:
+        results['complexity_profile'] = self.analyze_communication_complexity(
+            conversation_context['conversation'], profile_id)
+    
+    # 2. Personalização Afetiva Responsiva
+    results['affective_responses'] = self.generate_affective_response(
+        message, conversation_context, profile_id)
+    
+    # 3. Estímulo de Consistência Comportamental
+    results['behavioral_consistency'] = self.detect_behavioral_inconsistencies(
+        message, profile_id)
+    
+    # 4. Reforço de Participação Colaborativa
+    results['collaborative_engagement'] = self.suggest_collaborative_engagement(
+        message, conversation_context, profile_id)
+    
+    # 5. Intensificação de Vínculo
+    if conversation_context and 'recent_conversations' in conversation_context:
+        results['affective_calibration'] = self.calibrate_affective_engagement(
+            profile_id, conversation_context['recent_conversations'])
+    
+    # 6. Reconhecimento Direcionado por Mérito
+    results['merit_recognition'] = self.generate_merit_based_recognition(
+        message, profile_id)
+    
+    # 7. Realce de Expectativas por Referência
+    results['positive_references'] = self.generate_positive_references(
+        profile_id, conversation_context)
+    
+    # 8. Reforço de Referências Positivas
+    results['positive_reinforcement'] = self.reinforce_positive_experiences(
+        profile_id, conversation_context)
+    
+    # 9. Alternância de Estilos de Comunicação
+    results['communication_style'] = self.adapt_communication_style(
+        message, profile_id, previous_style_responses)
+    
+    # 10. Introduções com Sugestões Positivas
+    results['positive_openers'] = self.generate_positive_openers(
+        conversation_context, profile_id)
+    
+    # Gerar recomendações consolidadas
+    consolidated_recommendations = self.generate_consolidated_recommendations(
+        results, profile_id)
+    
+    return {
+        'module_results': results,
+        'recommendations': consolidated_recommendations
+    }
+Implementação da Interface de Usuário
+Para facilitar o acesso a esses módulos, adicione esta função ao método initialize_gui():
+
+python
+
+Copy
+def add_refinement_modules_to_ui(self):
+    """Adiciona a aba de refinamento comunicacional à interface"""
+    self.refinement_tab = ttk.Frame(self.notebook)
+    self.notebook.add(self.refinement_tab, text="Refinamento Comunicacional")
+    
+    # Container principal
+    main_frame = ttk.Frame(self.refinement_tab, padding=20)
+    main_frame.pack(fill=tk.BOTH, expand=True)
+    
+    # Título e descrição
+    ttk.Label(main_frame, text="Refinamento Comunicacional", 
+            font=("Arial", 16, "bold")).pack(pady=(0, 20))
+    
+    description = (
+        "Esta ferramenta analisa padrões de comunicação e gera recomendações personalizadas "
+        "para otimizar a eficácia das interações."
+    )
+    ttk.Label(main_frame, text=description, wraplength=600).pack(pady=(0, 20))
+    
+    # Seleção de perfil e análise
+    selection_frame = ttk.Frame(main_frame)
+    selection_frame.pack(fill=tk.X, pady=10)
+    
+    # Dropdown para perfis
+    ttk.Label(selection_frame, text="Perfil:").pack(side=tk.LEFT, padx=(0, 10))
+    self.refinement_profile_var = tk.StringVar()
+    profiles_dropdown = ttk.Combobox(selection_frame, textvariable=self.refinement_profile_var, 
+                                  state="readonly", width=30)
+    profiles_dropdown.pack(side=tk.LEFT, padx=(0, 20))
+    
+    # Carregar perfis disponíveis
+    profile_names = []
+    self.profile_id_map = {}
+    for profile_id, profile_data in self.profiles.items():
+        profile_name = profile_data['name']
+        profile_names.append(profile_name)
+        self.profile_id_map[profile_name] = profile_id
+    profiles_dropdown['values'] = profile_names
+    
+    # Botão de análise
+    ttk.Button(selection_frame, text="Analisar Comunicação", 
+             command=self.run_communication_refinement).pack(side=tk.LEFT)
+    
+    # Área de resultados
+    self.refinement_results_frame = ttk.LabelFrame(main_frame, text="Resultados da Análise")
+    self.refinement_results_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+    
+    # Mensagem inicial
+    ttk.Label(self.refinement_results_frame, 
+            text="Selecione um perfil e clique em 'Analisar Comunicação' para ver os resultados.",
+            wraplength=600).pack(pady=50)

@@ -1,0 +1,870 @@
+Compreendido. Procederemos com a implementação dos módulos 11 a 20, mantendo a consistência metodológica e a integração com a arquitetura existente do PSICOM.
+
+Aqui estão as implementações para cada módulo solicitado:
+
+11. Engajamento por Estruturação de Escolhas Suaves
+
+Este módulo oferece alternativas claras em momentos de indecisão detectada, facilitando a tomada de decisão e a continuidade do diálogo.
+
+    def generate_soft_choice_engagement(self, message, context=None, profile_id=None):
+        """
+        Oferece alternativas estruturadas (escolhas suaves) em momentos de indecisão
+        para facilitar a continuidade do diálogo e manter a percepção de autonomia.
+        """
+        if not message or not profile_id:
+            return None
+
+        profile = self.profiles.get(profile_id)
+        if not profile:
+            return None
+
+Detectar sinais de indecisão (similar ao módulo 4, mas com foco em gerar escolhas)
+        indecision_signals = False
+        attitude = message.get('analysis', {}).get('attitude', {}).get('primary_attitude')
+        if attitude in ['evasiva', 'submissa']:
+            indecision_signals = True
+
+        text = message.get('transcription') if message.get('content_type') == 'audio' and message.get('transcription') else message.get('content', '')
+        indecision_markers = [
+            'não sei', 'talvez', 'pode ser', 'tanto faz', 'você decide', 'você escolhe',
+            'qualquer um', 'como preferir', 'não tenho preferência', 'você que sabe',
+            'não tenho opinião', 'como achar melhor'
+        ]
+        if any(marker in text.lower() for marker in indecision_markers):
+            indecision_signals = True
+
+Se não houver sinais de indecisão, não gerar escolhas
+        if not indecision_signals:
+            return None
+
+Determinar tema da conversa para contextualizar as escolhas
+        tema = "esta questão"
+        if message.get('analysis', {}).get('themes'):
+            themes = message'analysis'
+            if themes:
+                tema = themes[0].replace('#', '')
+        elif context and 'previous_messages' in context:
+Tentar obter tema das mensagens anteriores
+             for prev_msg in reversed(context.get('previous_messages', [])):
+                 prev_themes = prev_msg.get('analysis', {}).get('themes', [])
+                 if prev_themes:
+                     tema = prev_themes[0].replace('#', '')
+                     break
+
+Gerar sugestões de escolhas suaves
+        choice_suggestions = []
+
+Templates de escolhas (A ou B)
+        choice_templates = [
+            "Para {tema}, você prefere que avancemos com a opção A ou a opção B?",
+            "Podemos seguir por dois caminhos principais em {tema}: focar em A ou em B. Qual deles parece mais adequado para você agora?",
+            "Considerando {tema}, seria melhor priorizar A neste momento, ou focar em B?",
+            "Temos duas alternativas para {tema}: A ou B. Qual delas ressoa mais com sua visão?",
+            "Para dar o próximo passo em {tema}, podemos escolher entre A ou B. Qual sua inclinação?"
+        ]
+
+Adaptar placeholders A e B (idealmente com base no contexto real, aqui usamos genéricos)
+Em uma implementação mais avançada, A e B seriam extraídos do diálogo ou contexto
+        option_A = "uma abordagem mais direta"
+        option_B = "uma análise mais detalhada"
+
+Verificar necessidade de controle no perfil para ajustar as opções
+        control_need = profile.get('psychological_profile', {}).get('motivation_factors', {}).get('control_need', {}).get('level')
+
+        if control_need == 'alta':
+Oferecer opções que reforcem a autonomia
+            choice_templates = [
+                "Para {tema}, você tem a autonomia de escolher entre A ou B. Qual sua decisão?",
+                "A decisão sobre {tema} está com você: prefere direcionar para A ou para B?",
+                "Seu critério definirá o caminho para {tema}: avançamos com A ou com B?"
+            ]
+            option_A = "a estratégia que você definir"
+            option_B = "um plano alternativo a ser proposto por você"
+
+        import random
+        template = random.choice(choice_templates)
+        suggestion = template.format(tema=tema).replace("A", option_A).replace("B", option_B)
+        choice_suggestions.append(suggestion)
+
+Adicionar uma opção mais aberta, mas ainda estruturada
+        open_choice_templates = [
+            "Além das opções A e B para {tema}, existe alguma outra alternativa que você gostaria de considerar?",
+            "Se nenhuma dessas opções (A ou B) para {tema} parecer ideal, qual seria sua sugestão?"
+        ]
+        if random.random() > 0.5: # 50% de chance de adicionar uma pergunta aberta
+             template_open = random.choice(open_choice_templates)
+             suggestion_open = template_open.format(tema=tema).replace("A", option_A).replace("B", option_B)
+             choice_suggestions.append(suggestion_open)
+
+
+        return {
+            'choice_suggestions': choice_suggestions,
+            'detected_signal': 'indecision'
+        }
+
+
+12. Modulação de Resposta por Variação Emocional Detectada
+
+Este módulo analisa mudanças emocionais ou de responsividade entre mensagens e sugere ajustes no tom da próxima resposta.
+
+    def modulate_response_by_emotion_variation(self, current_message, previous_message, profile_id):
+        """
+        Ajusta o tom da resposta com base em variações emocionais ou de
+        responsividade detectadas entre a mensagem atual e a anterior.
+        """
+        if not current_message or not previous_message or not profile_id:
+            return {'suggested_tone_adjustment': 'maintain_neutrality', 'reason': 'missing_data'}
+
+        profile = self.profiles.get(profile_id)
+        if not profile:
+            return {'suggested_tone_adjustment': 'maintain_neutrality', 'reason': 'profile_not_found'}
+
+Comparar estado emocional
+        current_emotion_data = current_message.get('analysis', {}).get('emotion', {})
+        previous_emotion_data = previous_message.get('analysis', {}).get('emotion', {})
+
+        emotion_shift = 'stable'
+        if current_emotion_data and previous_emotion_data:
+            current_valence = current_emotion_data.get('valence', 5) # Escala 0-10
+            previous_valence = previous_emotion_data.get('valence', 5)
+            current_arousal = current_emotion_data.get('arousal', 5)
+            previous_arousal = previous_emotion_data.get('arousal', 5)
+
+            valence_diff = current_valence - previous_valence
+            arousal_diff = current_arousal - previous_arousal
+
+            if abs(valence_diff) > 2: # Mudança significativa na valência (>2 pontos)
+                emotion_shift = 'more_positive' if valence_diff > 0 else 'more_negative'
+            elif abs(arousal_diff) > 2: # Mudança significativa na ativação
+                 emotion_shift = 'more_aroused' if arousal_diff > 0 else 'less_aroused'
+
+Comparar tempo de resposta (se aplicável)
+        response_time_shift = 'stable'
+        current_response_time = current_message.get('context', {}).get('conversation_state', {}).get('response_time')
+        previous_response_time = previous_message.get('context', {}).get('conversation_state', {}).get('response_time')
+        avg_historical_time = profile.get('communication_stats', {}).get('avg_response_time')
+
+        if current_response_time is not None:
+             comparison_time = previous_response_time if previous_response_time is not None else avg_historical_time
+             if comparison_time is not None and comparison_time > 0:
+                 ratio = current_response_time / comparison_time
+                 if ratio  1.5: # 50% mais lento
+                     response_time_shift = 'slower'
+
+Comparar complexidade linguística (se aplicável)
+        complexity_shift = 'stable'
+        current_complexity = current_message.get('analysis', {}).get('linguistic_analysis', {}).get('style_metrics', {}).get('complexity')
+        previous_complexity = previous_message.get('analysis', {}).get('linguistic_analysis', {}).get('style_metrics', {}).get('complexity')
+
+        if current_complexity is not None and previous_complexity is not None:
+             complexity_diff = current_complexity - previous_complexity
+             if abs(complexity_diff) > 0.2: # Mudança significativa (> 0.2)
+                 complexity_shift = 'more_complex' if complexity_diff > 0 else 'less_complex'
+
+Determinar ajuste de tom com base nas mudanças
+        suggested_tone_adjustment = 'maintain_neutrality' # Padrão
+
+Lógica de ajuste (pode ser refinada com regras mais complexas)
+        if emotion_shift == 'more_negative' or response_time_shift == 'slower':
+            suggested_tone_adjustment = 'increase_empathy' # Resposta negativa ou mais lenta -> Aumentar empatia
+        elif emotion_shift == 'more_positive' or response_time_shift == 'faster':
+             suggested_tone_adjustment = 'match_positivity' # Resposta positiva ou mais rápida -> Espelhar positividade
+        elif complexity_shift == 'less_complex' and emotion_shift != 'more_positive':
+             suggested_tone_adjustment = 'simplify_and_support' # Simplificação pode indicar dificuldade -> Simplificar e apoiar
+        elif emotion_shift == 'more_aroused':
+             suggested_tone_adjustment = 'calm_and_structured' # Mais agitado -> Oferecer calma e estrutura
+
+Considerar o perfil (e.g., se a pessoa tem baixa abertura emocional, evitar "match_positivity" muito intenso)
+        emotional_openness = profile.get('psychological_profile', {}).get('emotional_tendencies', {}).get('emotional_openness', {}).get('level', 'média')
+        if emotional_openness == 'baixa' and suggested_tone_adjustment == 'match_positivity':
+            suggested_tone_adjustment = 'maintain_neutrality' # Evitar excesso de positividade
+
+        return {
+            'suggested_tone_adjustment': suggested_tone_adjustment,
+            'detected_shifts': {
+                'emotion': emotion_shift,
+                'response_time': response_time_shift,
+                'complexity': complexity_shift
+            },
+            'reason': 'variation_detected'
+        }
+
+
+13. Estímulo de Validação Intermitente
+
+Este módulo implementa um cronograma variável para oferecer validação, promovendo um reforço mais natural e menos previsível.
+
+    def generate_intermittent_validation(self, profile_id, current_interaction_context):
+        """
+        Gera validação ou reforço positivo de forma intermitente,
+        baseado em um cronograma variável e na qualidade da interação.
+        """
+        if not profile_id or profile_id not in self.profiles:
+            return None
+
+        profile = self.profiles[profile_id]
+
+Obter dados de calibração de validação do perfil
+        validation_calibration = profile.get('communication_patterns', {}).get('validation_calibration', {})
+        last_validation_timestamp = validation_calibration.get('last_timestamp')
+        target_interval_hours = validation_calibration.get('target_interval_hours', 24) # Padrão: 1 vez por dia
+        base_probability = validation_calibration.get('base_probability', 0.3) # Padrão: 30% de chance base
+
+Verificar se tempo suficiente passou desde a última validação
+        time_passed = False
+        if last_validation_timestamp:
+            from datetime import datetime, timedelta
+            last_time = datetime.fromisoformat(last_validation_timestamp)
+            if datetime.now() > last_time + timedelta(hours=target_interval_hours * 0.8): # 80% do intervalo
+                 time_passed = True
+        else:
+            time_passed = True # Primeira validação
+
+        if not time_passed:
+            return None # Ainda não é hora
+
+Calcular probabilidade atual de validação
+        current_probability = base_probability
+
+Ajustar probabilidade com base no contexto atual (qualidade da última interação)
+        last_message = current_interaction_context.get('last_message')
+        if last_message:
+Verificar se a última mensagem do alvo foi positiva
+             behavior = last_message.get('analysis', {}).get('behavioral_indicators', {}).get('dominant_pattern', {}).get('pattern')
+             attitude = last_message.get('analysis', {}).get('attitude', {}).get('primary_attitude')
+
+             if behavior in ['proactive', 'collaborative'] or attitude == 'colaborativa':
+                 current_probability *= 1.5 # Aumentar chance se última interação foi positiva
+             elif behavior in ['avoidance', 'reactive'] or attitude in ['resistente', 'evasiva']:
+                  current_probability *= 0.7 # Diminuir chance se última interação foi negativa
+
+Limitar probabilidade
+        current_probability = max(0.1, min(0.9, current_probability))
+
+Decidir se validação será oferecida
+        import random
+        if random.random() > current_probability:
+             return None # Não oferecer validação desta vez
+
+Gerar frase de validação (variada)
+        validation_templates = [
+             "Aprecio muito sua perspectiva sobre este assunto.",
+             "Sua contribuição tem sido realmente valiosa.",
+             "Gosto da forma como você está abordando esta questão.",
+             "É ótimo trabalhar com você neste projeto.",
+             "Sua clareza na comunicação facilita muito nosso trabalho.",
+             "Reconheço o esforço que você tem dedicado a isso.",
+             "Sua opinião é sempre muito bem-vinda e considerada."
+        ]
+
+Selecionar validação específica se houver mérito detectado na última mensagem
+        merit_recognition = self.generate_merit_based_recognition(last_message, profile_id) if last_message else None
+        if merit_recognition and merit_recognition.get('recognition_phrases'):
+             validation_phrase = random.choice(merit_recognition['recognition_phrases'])
+        else:
+Usar template genérico
+             validation_phrase = random.choice(validation_templates)
+
+Atualizar dados de calibração no perfil
+        if 'communication_patterns' not in profile:
+             profile['communication_patterns'] = {}
+
+        profile'communication_patterns' = {
+             'last_timestamp': datetime.now().isoformat(),
+             'target_interval_hours': target_interval_hours, # Poderia ser ajustado dinamicamente
+             'base_probability': base_probability # Poderia ser ajustado dinamicamente
+        }
+        self.update_profile(profile_id, profile)
+
+
+        return {
+            'validation_phrase': validation_phrase,
+            'reason': 'intermittent_schedule_met'
+        }
+
+14. Inserção de Sensibilidade Situacional Estratégica
+
+Este módulo permite ao usuário do PSICOM injetar contexto pessoal para modular a resposta do interlocutor.
+
+    def insert_strategic_situational_sensitivity(self, profile_id, user_situation_type, intensity='moderada'):
+        """
+        Gera frases para o usuário inserir na conversa, expressando
+        sensibilidade situacional para induzir reciprocidade afetiva.
+        """
+        if not profile_id or not user_situation_type:
+            return None
+
+        profile = self.profiles.get(profile_id)
+        if not profile:
+            return None
+
+Templates de auto-revelação por tipo de situação e intensidade
+        sensitivity_templates = {
+            'difficult_day': {
+                'sutil': [
+                    "Hoje está um pouco corrido por aqui, mas vamos focar nisso.",
+                    "Estou com algumas outras demandas hoje, mas quero dar atenção a este ponto."
+                ],
+                'moderada': [
+                    "Confesso que hoje o dia está um pouco mais desafiador, agradeço sua compreensão enquanto resolvemos isso.",
+                    "Estou passando por um dia um pouco atípico, mas farei o meu melhor para focarmos nesta questão."
+                ],
+                'alta': [
+                    "Sendo bem transparente, hoje estou lidando com algumas questões pessoais, então sua paciência será muito apreciada enquanto trabalhamos nisto.",
+                    "Estou num dia particularmente difícil, então qualquer colaboração extra da sua parte seria muito bem-vinda."
+                ]
+            },
+            'feeling_positive': {
+                'sutil': [
+                    "Estou com uma boa perspectiva sobre este projeto.",
+                    "Sinto que estamos no caminho certo com esta abordagem."
+                ],
+                'moderada': [
+                    "Estou bastante otimista sobre o que podemos alcançar juntos neste assunto.",
+                    "Sinto uma energia positiva em relação a esta colaboração."
+                ],
+                'alta': [
+                    "Estou realmente entusiasmado(a) com as possibilidades que temos aqui!",
+                    "Sinto que juntos podemos fazer algo excepcional neste projeto!"
+                ]
+            },
+             'need_focus': {
+                 'sutil': [
+                     "Gostaria de concentrar nossa atenção neste ponto específico por um momento.",
+                     "Podemos focar exclusivamente nesta questão agora?"
+                 ],
+                 'moderada': [
+                     "Para garantir que avancemos eficientemente, preciso de foco total nesta tarefa agora.",
+                     "Minha atenção está voltada para resolver esta questão prioritária neste momento."
+                 ],
+                 'alta': [
+                     "Preciso de concentração máxima para finalizar esta etapa crucial. Podemos retomar outros pontos depois?",
+                     "Este é um momento crítico que exige toda minha atenção. Agradeço o foco conjunto."
+                 ]
+             }
+Adicionar outros tipos de situação conforme necessário
+        }
+
+Selecionar templates apropriados
+        if user_situation_type not in sensitivity_templates:
+             logger.warning(f"Tipo de situação desconhecido: {user_situation_type}")
+             return None
+
+        selected_templates = sensitivity_templates[user_situation_type].get(intensity, sensitivity_templatesuser_situation_type)
+
+Selecionar uma frase aleatória
+        import random
+        selected_phrase = random.choice(selected_templates)
+
+Considerar o perfil do interlocutor para ajustar a sugestão
+Ex: Se o interlocutor tem baixa abertura emocional, sugerir frases mais sutis
+        emotional_openness = profile.get('psychological_profile', {}).get('emotional_tendencies', {}).get('emotional_openness', {}).get('level', 'média')
+        recommendation_adjustment = None
+
+        if emotional_openness == 'baixa' and intensity != 'sutil':
+            recommendation_adjustment = "Considerando o perfil, talvez uma abordagem mais sutil seja mais eficaz."
+Oferecer também uma opção sutil
+            sutil_option = random.choice(sensitivity_templatesuser_situation_type)
+            selected_phrase = f"{selected_phrase} (Alternativa mais sutil: {sutil_option})"
+
+
+        return {
+            'suggested_sensitivity_phrase': selected_phrase,
+            'situation_type': user_situation_type,
+            'intensity': intensity,
+            'adjustment_recommendation': recommendation_adjustment
+        }
+
+15. Mapeamento Progressivo de Padrões de Reação Positiva
+
+Este módulo aprende quais estruturas de frase enviadas pelo usuário geram respostas positivas do interlocutor.
+
+    def map_positive_reaction_patterns(self, profile_id, sent_message_details, received_response):
+        """
+        Analisa a resposta recebida a uma mensagem enviada e, se a resposta for positiva,
+        armazena os detalhes da mensagem enviada que a provocou.
+        """
+        if not profile_id or not sent_message_details or not received_response:
+            return False
+
+        profile = self.profiles.get(profile_id)
+        if not profile:
+            return False
+
+Analisar a resposta recebida para determinar se foi positiva
+        is_positive_response = False
+        behavior = received_response.get('analysis', {}).get('behavioral_indicators', {}).get('dominant_pattern', {}).get('pattern')
+        attitude = received_response.get('analysis', {}).get('attitude', {}).get('primary_attitude')
+        emotion = received_response.get('analysis', {}).get('emotion', {}).get('primary_emotion')
+
+Critérios para resposta positiva (ajustáveis)
+        if behavior in ['proactive', 'collaborative'] or attitude == 'colaborativa':
+            is_positive_response = True
+        elif emotion in ['contentamento', 'entusiasmo']:
+             is_positive_response = True
+
+Considerar tempo de resposta rápido como positivo
+        response_time = received_response.get('context', {}).get('conversation_state', {}).get('response_time')
+        avg_historical_time = profile.get('communication_stats', {}).get('avg_response_time')
+        if response_time and avg_historical_time and response_time  max_triggers:
+            profile'learning' = profile'learning'[-max_triggers:]
+
+Atualizar o perfil
+        logger.info(f"Mapeado gatilho de resposta positiva para perfil {profile_id}: {trigger_details}")
+        return self.update_profile(profile_id, profile)
+
+Nota sobre o Módulo 15: Este módulo foca no aprendizado. A reutilização desses padrões aprendidos seria feita por outros módulos (como o 16 ou 20) ao consultarem profile'learning'.
+
+16. Uso de Estruturas Repetidas com Variação Contextual
+
+Este módulo gera mensagens estruturadas com variações para situações específicas, usando templates e elementos contextuais.
+
+    def use_structured_templates_with_variation(self, profile_id, situation, context=None):
+        """
+        Gera mensagens usando estruturas padronizadas com variações contextuais
+        para situações específicas como reforço de vínculo ou retomada de diálogo.
+        """
+        if not profile_id or not situation:
+            return None
+
+        profile = self.profiles.get(profile_id)
+        if not profile:
+            return None
+
+Definir templates estruturados por situação
+        structured_templates = {
+            'reinforce_bond': [
+                "[Greeting] Só passando para [Positive_Remark]. [Gentle_Question]?",
+                "[Greeting] Lembrei de [Shared_Positive_Experience]. [Offer_Support].",
+                "[Greeting] Espero que esteja tudo bem por aí. [Simple_Affirmation]."
+            ],
+            'maintain_consistency': [
+                "[Greeting] Dando continuidade ao nosso assunto sobre {theme}, [Next_Step_Suggestion].",
+                "[Greeting] Para mantermos o alinhamento em {theme}, proponho que [Action_Item].",
+                "[Greeting] Seguindo nossa conversa sobre {theme}, gostaria de confirmar [Detail]."
+            ],
+            'resume_dialogue': [
+                "[Greeting] Retomando nossa conversa sobre {theme}, como podemos avançar?",
+                "[Greeting] Voltando ao ponto sobre {theme}, gostaria de saber sua perspectiva atual.",
+                "[Greeting] Dando seguimento à nossa discussão sobre {theme}, qual seria o próximo passo ideal?"
+            ]
+Adicionar outras situações conforme necessário
+        }
+
+Verificar se a situação é válida
+        if situation not in structured_templates:
+            logger.warning(f"Situação desconhecida para template estruturado: {situation}")
+            return None
+
+Selecionar um template aleatório para a situação
+        import random
+        template = random.choice(structured_templates[situation])
+
+Definir listas de variações para os placeholders
+        greetings = ["Olá!", "Oi,", "Bom dia!", "Boa tarde!"]
+        positive_remarks = ["ver como você está", "desejar um bom dia", "checar se precisa de algo"]
+        gentle_questions = ["Tudo certo por aí", "Como estão as coisas", "Precisando de algo"]
+        shared_experiences = ["nossa última conversa produtiva", "aquele projeto bem-sucedido", "sua ótima sugestão anterior"]
+        offer_support = ["Estou à disposição se precisar de algo", "Conte comigo se houver algo em que posso ajudar", "Qualquer coisa, é só chamar"]
+        simple_affirmations = ["Tenha um ótimo dia!", "Espero que sua semana esteja sendo boa.", "Fico à disposição."]
+        next_step_suggestions = ["poderíamos definir o cronograma", "poderíamos detalhar o plano de ação", "poderíamos revisar os pontos principais"]
+        action_items = ["validemos o rascunho final", "agendemos uma breve reunião", "confirmemos os próximos passos"]
+        details_to_confirm = ["se você concorda com a proposta", "sua disponibilidade para a próxima etapa", "se há algum ajuste necessário"]
+
+Mapeamento de placeholders para listas de variações
+        placeholder_map = {
+            "[Greeting]": greetings,
+            "[Positive_Remark]": positive_remarks,
+            "[Gentle_Question]": gentle_questions,
+            "[Shared_Positive_Experience]": shared_experiences,
+            "[Offer_Support]": offer_support,
+            "[Simple_Affirmation]": simple_affirmations,
+            "[Next_Step_Suggestion]": next_step_suggestions,
+            "[Action_Item]": action_items,
+            "[Detail]": details_to_confirm
+        }
+
+Obter tema do contexto (se disponível)
+        theme = "o assunto"
+        if context and 'themes' in context and context['themes']:
+            theme = context'themes'.replace('#', '')
+        elif situation in ['maintain_consistency', 'resume_dialogue']:
+Tentar buscar último tema discutido no perfil
+(Implementação simplificada, idealmente buscaria no histórico)
+             pass
+
+Substituir placeholders no template
+        generated_message = template
+        generated_message = generated_message.replace("{theme}", theme)
+
+        for placeholder, variations in placeholder_map.items():
+            if placeholder in generated_message:
+                generated_message = generated_message.replace(placeholder, random.choice(variations), 1) # Substituir apenas a primeira ocorrência
+
+Ajustar capitalização inicial
+        generated_message = generated_message[0].upper() + generated_message[1:]
+
+        return {
+            'structured_message': generated_message,
+            'situation': situation,
+            'template_used': template # Para depuração ou aprendizado futuro
+        }
+
+
+17. Aprendizado Condicionado a Retornos Positivos
+
+Este módulo gera reconhecimento imediato quando a resposta do interlocutor é funcional (clara, colaborativa, etc.), reforçando esses padrões.
+
+    def generate_conditioned_positive_feedback(self, received_message, profile_id):
+        """
+        Gera reconhecimento imediato e adaptado quando a resposta recebida
+        é considerada funcional (clara, colaborativa, empática).
+        """
+        if not received_message or not profile_id:
+            return None
+
+Analisar a mensagem recebida para verificar se é funcional
+        is_functional = False
+        functional_qualities = []
+
+1. Clareza e Objetividade
+        linguistic_analysis = received_message.get('analysis', {}).get('linguistic_analysis', {})
+        if linguistic_analysis:
+            complexity = linguistic_analysis.get('style_metrics', {}).get('complexity', 0.5)
+            hedging = linguistic_analysis.get('style_metrics', {}).get('hedging', 0.5)
+Considera funcional se complexidade não for muito alta e hedging for baixo
+            if complexity  15 palavras), tentar simplificar
+            if len(words) > 15:
+Tentativa simples: quebrar na primeira vírgula ou 'e' se possível
+(Uma biblioteca NLP faria isso melhor)
+                 parts = re.split(r'(,\s+|\s+e\s+)', sentence, maxsplit=1)
+                 if len(parts) > 1:
+                     simplified_sentences.append(parts[0] + (parts[1] if parts[1].strip() == ',' else '.'))
+                     simplified_sentences.append(parts2.upper() + parts2) # Capitalizar a próxima parte
+                 else:
+                     simplified_sentences.append(sentence) # Não conseguiu quebrar
+            else:
+                simplified_sentences.append(sentence)
+
+        simplified_content = " ".join(simplified_sentences)
+
+2. Substituir palavras complexas por sinônimos simples (exemplo básico)
+        complex_simple_map = {
+            "implementar": "fazer", "utilizar": "usar", "otimizar": "melhorar",
+            "consequentemente": "por isso", "entretanto": "mas", "portanto": "então",
+            "solicitar": "pedir", "informar": "dizer", "verificar": "ver",
+            "necessário": "preciso", "fundamental": "importante", "adequado": "bom",
+            "perspectiva": "opinião", "abordagem": "jeito", "metodologia": "jeito de fazer",
+            "diretrizes": "regras", "parâmetros": "limites", "cronograma": "plano de tempo"
+Adicionar mais mapeamentos conforme necessário
+        }
+
+        words = simplified_content.lower().split()
+        processed_words = []
+        for word in simplified_content.split():
+             lower_word = word.lower().strip('.,!?;:')
+             replacement = complex_simple_map.get(lower_word)
+             if replacement:
+Manter capitalização original (aproximado)
+                  if word[0].isupper():
+                      processed_words.append(replacement.capitalize())
+                  else:
+                      processed_words.append(replacement)
+Adicionar pontuação de volta se removida
+                  if word[-1] in '.,!?;:':
+                      processed_words[-1] += word[-1]
+
+             else:
+                  processed_words.append(word)
+
+        simplified_content = " ".join(processed_words)
+
+3. Usar voz ativa (difícil sem NLP completo, mas evitar passivas complexas)
+Ex: "Será necessário que seja feito" -> "Precisamos fazer" (requer análise semântica)
+
+4. Focar em exemplos concretos (requer contexto da mensagem original)
+
+Retornar conteúdo simplificado
+        return simplified_content
+
+
+19. Reativação Relacional Pós-Silêncio Prolongado
+
+Este módulo detecta longos períodos sem interação e sugere mensagens acolhedoras para reativar o diálogo.
+
+    def generate_reengagement_after_silence(self, profile_id, last_interaction_timestamp):
+        """
+        Gera mensagens acolhedoras e proativas para reativar o diálogo
+        após um período de silêncio prolongado.
+        """
+        if not profile_id or not last_interaction_timestamp:
+            return None
+
+        profile = self.profiles.get(profile_id)
+        if not profile:
+            return None
+
+Calcular tempo desde a última interação
+        from datetime import datetime, timedelta
+        try:
+            last_time = datetime.fromisoformat(last_interaction_timestamp)
+            time_since_last = datetime.now() - last_time
+        except ValueError:
+             logger.error(f"Timestamp inválido para reengajamento: {last_interaction_timestamp}")
+             return None
+
+Definir limiar para "silêncio prolongado"
+Usar o dobro do tempo médio de resposta do perfil, com mínimo de 24h e máximo de 72h
+        avg_response_time_minutes = profile.get('communication_stats', {}).get('avg_response_time')
+        threshold_hours = 24 # Mínimo
+
+        if avg_response_time_minutes is not None:
+Dobro da média, convertido para horas
+             profile_threshold_hours = (avg_response_time_minutes * 2) / 60
+Aplicar limites
+             threshold_hours = max(24, min(72, profile_threshold_hours))
+
+Verificar se o limiar foi ultrapassado
+        if time_since_last  0.4: # 60% de chance de usar contextual
+             chosen_templates = contextual_templates
+
+Selecionar frase e formatar com o tema
+        reengagement_phrase = random.choice(chosen_templates).format(theme=last_theme)
+
+        return {
+            'reengagement_phrase': reengagement_phrase,
+            'time_since_last_interaction': str(time_since_last),
+            'threshold_hours': threshold_hours
+        }
+
+
+20. Composição Multimodal de Resposta Estratégica
+
+Este módulo substitui generate_consolidated_recommendations e atua como o orquestrador final, combinando as saídas dos outros módulos para criar respostas completas e naturais.
+
+    def compose_strategic_response(self, module_results, profile_id, context=None):
+        """
+        Compõe uma ou mais opções de resposta estratégica combinando as saídas
+        dos módulos de refinamento, garantindo naturalidade e coerência.
+        Substitui generate_consolidated_recommendations.
+        """
+        if not module_results or not profile_id:
+            return {'response_options': ["Desculpe, não consegui gerar uma sugestão."], 'strategies': []}
+
+        profile = self.profiles.get(profile_id)
+        if not profile:
+            return {'response_options': ["Perfil não encontrado."], 'strategies': []}
+
+--- 1. Determinar Estilo e Tom Geral ---
+        recommended_style = 'direto' # Padrão
+        style_details = {}
+        if module_results.get('communication_style'):
+            recommended_style = module_results['communication_style'].get('recommended_style', 'direto')
+            style_details = module_results['communication_style'].get('style_details', {})
+
+        tone_adjustment = 'maintain_neutrality'
+        if module_results.get('modulate_response_by_emotion_variation'):
+            tone_adjustment = module_results['modulate_response_by_emotion_variation'].get('suggested_tone_adjustment', 'maintain_neutrality')
+
+        affective_intensity = 'moderada'
+        affective_frequency = 0.3
+        if module_results.get('affective_calibration'):
+             affective_intensity = module_results['affective_calibration'].get('affective_intensity', 'moderada')
+             affective_frequency = module_results['affective_calibration'].get('affective_frequency', 0.3)
+
+--- 2. Selecionar Componentes da Mensagem ---
+        selected_components = {}
+
+Opener (Módulo 10)
+        if module_results.get('positive_openers'):
+            openers = module_results['positive_openers'].get('positive_openers', [])
+            if openers:
+                selected_components['opener'] = random.choice(openers)
+
+Validação Intermitente (Módulo 13)
+        if module_results.get('generate_intermittent_validation'):
+             validation = module_results['generate_intermittent_validation'].get('validation_phrase')
+             if validation:
+                 selected_components['intermittent_validation'] = validation
+
+Reconhecimento por Mérito (Módulo 6)
+        if module_results.get('merit_recognition'):
+            recognition = module_results['merit_recognition'].get('recognition_phrases', [])
+            if recognition:
+                 selected_components['merit_recognition'] = random.choice(recognition)
+
+Feedback Condicionado (Módulo 17)
+        if module_results.get('generate_conditioned_positive_feedback'):
+             feedback = module_results['generate_conditioned_positive_feedback'].get('positive_feedback_phrase')
+             if feedback:
+Priorizar feedback condicionado sobre reconhecimento por mérito se ambos ocorrerem
+                  if 'merit_recognition' in selected_components:
+                      del selected_components['merit_recognition']
+                  selected_components['conditioned_feedback'] = feedback
+
+Resposta Afetiva (Módulo 2)
+        if module_results.get('affective_responses'):
+            affective = module_results['affective_responses'].get('affective_responses', [])
+Aplicar apenas se a frequência permitir e a intensidade for adequada
+            if affective and random.random() < affective_frequency:
+Selecionar resposta com base na intensidade calibrada (Módulo 5)
+                 resp_intensity = module_results['affective_responses'].get('intensity', 'moderada')
+                 if resp_intensity == affective_intensity: # Usar a intensidade calibrada
+                      selected_components['affective_response'] = random.choice(affective)
+
+Escolhas Suaves (Módulo 11)
+        if module_results.get('generate_soft_choice_engagement'):
+            choices = module_results['generate_soft_choice_engagement'].get('choice_suggestions', [])
+            if choices:
+                selected_components['soft_choice'] = random.choice(choices)
+
+Pergunta Reflexiva (Módulo 3)
+        if module_results.get('behavioral_consistency'):
+             questions = module_results['behavioral_consistency'].get('reflective_questions', [])
+             if questions:
+                  selected_components['reflective_question'] = random.choice(questions)
+
+Sugestão Colaborativa (Módulo 4)
+        if module_results.get('collaborative_engagement'):
+             suggestions = module_results['collaborative_engagement'].get('collaborative_suggestions', [])
+             if suggestions:
+                  selected_components['collaborative_suggestion'] = random.choice(suggestions)
+
+Referência Positiva (Módulo 7)
+        if module_results.get('positive_references'):
+             references = module_results['positive_references'].get('reference_phrases', [])
+             if references:
+                  selected_components['positive_reference'] = random.choice(references)
+
+Reforço de Experiência Positiva (Módulo 8)
+        if module_results.get('positive_reinforcement'):
+             reinforcements = module_results['positive_reinforcement'].get('reinforcement_phrases', [])
+             if reinforcements:
+Priorizar sobre referência genérica se ambos ocorrerem
+                  if 'positive_reference' in selected_components:
+                      del selected_components['positive_reference']
+                  selected_components['positive_reinforcement'] = random.choice(reinforcements)
+
+Template Estruturado (Módulo 16) - Usar se o objetivo for específico
+        structured_message = None
+Exemplo: Se o objetivo for reengajamento
+if context.get('goal') == 'reengagement':
+structured_result = self.use_structured_templates_with_variation(profile_id, 'resume_dialogue', context)
+if structured_result:
+structured_message = structured_result['structured_message']
+# Se usar template estruturado, ele pode substituir outros componentes
+
+--- 3. Compor as Opções de Resposta ---
+        response_options = []
+        num_options = 2 # Gerar 2 opções de resposta
+
+        for _ in range(num_options):
+            response_parts = []
+
+a. Adicionar Opener (se houver)
+            if 'opener' in selected_components and random.random() < 0.7: # 70% chance de usar opener
+                 response_parts.append(selected_components['opener'])
+
+b. Adicionar Validação/Reconhecimento/Feedback (priorizar um)
+            added_praise = False
+            if 'conditioned_feedback' in selected_components and random.random() < 0.8:
+                 response_parts.append(selected_components['conditioned_feedback'])
+                 added_praise = True
+            elif 'merit_recognition' in selected_components and not added_praise and random.random() < 0.6:
+                 response_parts.append(selected_components['merit_recognition'])
+                 added_praise = True
+            elif 'intermittent_validation' in selected_components and not added_praise and random.random() < 0.5:
+                 response_parts.append(selected_components['intermittent_validation'])
+                 added_praise = True
+
+c. Adicionar Corpo Principal (baseado no estilo ou template estruturado)
+            core_message = ""
+            if structured_message:
+                 core_message = structured_message # Usar template se definido
+Remover placeholders que já foram cobertos por outros componentes
+(Lógica complexa, simplificação: apenas usar o template)
+            elif style_details and 'examples' in style_details:
+Escolher um exemplo do estilo recomendado
+                 core_message = random.choice(style_details['examples'])
+Substituir placeholder de ação (simplificado)
+                 action = "avançarmos nesta questão"
+                 core_message = core_message.format(ação_principal=action)
+            else:
+Fallback
+                 core_message = "Podemos discutir os próximos passos?"
+
+            response_parts.append(core_message)
+
+d. Adicionar Elementos Adicionais (escolher 1 ou 2 com base na probabilidade)
+            additional_elements = []
+            if 'affective_response' in selected_components: additional_elements.append(selected_components['affective_response'])
+            if 'soft_choice' in selected_components: additional_elements.append(selected_components['soft_choice'])
+            if 'reflective_question' in selected_components: additional_elements.append(selected_components['reflective_question'])
+            if 'collaborative_suggestion' in selected_components: additional_elements.append(selected_components['collaborative_suggestion'])
+            if 'positive_reference' in selected_components: additional_elements.append(selected_components['positive_reference'])
+            if 'positive_reinforcement' in selected_components: additional_elements.append(selected_components['positive_reinforcement'])
+
+            random.shuffle(additional_elements)
+            num_additional = random.choice([0, 1, 1, 2]) # Mais chance de 1, alguma de 0 ou 2
+            response_parts.extend(additional_elements[:num_additional])
+
+e. Montar a resposta
+            final_response = " ".join(response_parts)
+
+f. Aplicar Simplificação (Módulo 18) se necessário
+            complexity_level = profile.get('communication_patterns', {}).get('complexity_profile', {}).get('complexity_level', 'moderado')
+            if complexity_level == 'simples':
+                 final_response = self.simplify_language_for_profile(profile_id, final_response)
+
+g. Ajustar pontuação e fluidez (básico)
+            final_response = final_response.replace("..", ".").replace(". .", ".").strip()
+Garantir ponto final
+            if not final_response.endswith(('.', '!', '?')):
+                 final_response += '.'
+Capitalizar início
+            final_response = final_response[0].upper() + final_response[1:]
+
+            response_options.append(final_response)
+
+--- 4. Definir Estratégias Gerais ---
+        strategies = []
+        if recommended_style:
+            strategies.append(f"Adotar um estilo de comunicação '{recommended_style}'.")
+        if tone_adjustment != 'maintain_neutrality':
+             adjustment_map = {
+                 'increase_empathy': 'Aumentar a empatia na resposta.',
+                 'match_positivity': 'Espelhar o tom positivo detectado.',
+                 'simplify_and_support': 'Simplificar a linguagem e oferecer suporte.',
+                 'calm_and_structured': 'Manter um tom calmo e estruturado.'
+             }
+             strategies.append(adjustment_map.get(tone_adjustment, "Ajustar o tom conforme necessário."))
+
+Adicionar estratégias de módulos específicos
+        if module_results.get('behavioral_consistency') and module_results['behavioral_consistency'].get('reflective_questions'):
+            strategies.append("Considerar a inclusão de uma pergunta reflexiva para abordar a inconsistência detectada.")
+        if module_results.get('generate_soft_choice_engagement') and module_results['generate_soft_choice_engagement'].get('choice_suggestions'):
+             strategies.append("Oferecer escolhas estruturadas para facilitar a decisão.")
+        if complexity_level == 'simples':
+             strategies.append("Manter a linguagem simples, direta e concreta.")
+
+
+        return {
+            'response_options': response_options,
+            'strategies': strategies,
+            'debug_selected_components': selected_components # Para depuração
+        }
+
+
+Integração Final
+
+Adicionar Funções: Copie todas as funções dos módulos 11-20 e a função compose_strategic_response para dentro da classe PsychologicalAnalysisSystem.
+Modificar analyze_and_refine_communication:
+    Remova a chamada para generate_consolidated_recommendations.
+    Adicione as chamadas para os novos módulos (11-20) dentro dela, similarmente aos módulos 1-10.
+    No final, chame compose_strategic_response passando results e profile_id.
+    Certifique-se de passar os contextos necessários para cada módulo (alguns precisam de previous_message, conversation_context, etc.).
+Atualizar a Interface:
+    Modifique display_refinement_results para exibir a saída de compose_strategic_response, que agora contém response_options e strategies, em vez da estrutura anterior. Adapte a exibição para mostrar as opções de resposta e as estratégias de forma clara.
+    Verifique se a chamada run_communication_refinement passa os contextos corretos para analyze_and_refine_communication.
+
+Com essas implementações, o PSICOM ganhará uma capacidade significativamente maior de adaptação e refinamento contextual, tornando suas sugestões de comunicação ainda mais sofisticadas e eficazes.
