@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+PSICOM Code Integration Tool
+Este script aplica atualizações incrementais a um arquivo de código base
+"""
+
+import re
+import os
+import hashlib
+import difflib
+import argparse
+from datetime import datetime
+
+class CodeIntegrator:
+    def __init__(self, base_file, output_file=None):
+        """Inicializa o integrador com um arquivo base"""
+        self.base_file = base_file
+        self.output_file = output_file or f"{os.path.splitext(base_file)[0]}_integrated.py"
+        self.backup_dir = "./code_backups"
+        
+        # Garantir que o diretório de backup exista
+        os.makedirs(self.backup_dir, exist_ok=True)
+        
+        # Carregar o código base
+        with open(self.base_file, 'r', encoding='utf-8') as f:
+            self.code_content = f.read()
+        
+        # Criar backup inicial
+        self._create_backup('initial')
+    
+    def _create_backup(self, label):
+        """Cria um backup com timestamp e label"""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_file = f"{self.backup_dir}/{os.path.basename(self.base_file)}_{label}_{timestamp}.bak"
+        
+        with open(backup_file, 'w', encoding='utf-8') as f:
+            f.write(self.code_content)
+        
+        print(f"Backup criado: {backup_file}")
+        return backup_file
+    
+    def apply_update_file(self, update_file):
+        """Aplica todas as atualizações de um arquivo"""
+        print(f"\n{'='*70}")
+        print(f"Processando arquivo de atualizações: {update_file}")
+        print(f"{'='*70}\n")
+        
+        with open(update_file, 'r', encoding='utf-8') as f:
+            update_content = f.read()
+        
+        # Quebrar em blocos de atualização (isso pode precisar ser ajustado)
+        # Este padrão assume blocos separados por um padrão como "# === BLOCO X ==="
+        blocks = re.split(r'#{3,}\s*BLOCO\s+\d+\s*#{3,}', update_content)
+        
+        # Remover blocos vazios
+        blocks = [block.strip() for block in blocks if block.strip()]
+        
+        print(f"Encontrados {len(blocks)} blocos de atualização")
+        
+        successful_blocks = 0
+        for i, block in enumerate(blocks):
+            # Extrair informações do bloco (isso depende do formato dos seus blocos)
+            match_type = re.search(r'# TIPO: (ADIÇÃO|SUBSTITUIÇÃO|REMOÇÃO)', block)
+            match_target = re.search(r'# ALVO: (.+)', block)
+            
+            if not match_type or not match_target:
+                print(f"Bloco {i+1}: Metadados insuficientes, pulando.")
+                continue
+            
+            update_type = match_type.group(1)
+            target_pattern = match_target.group(1).strip()
+            
+            # Extrair o código real do bloco (sem os metadados)
+            code_lines = [line for line in block.split('\n') 
+                         if not line.strip().startswith('# TIPO:') and 
+                            not line.strip().startswith('# ALVO:')]
+            
+            update_code = '\n'.join(code_lines).strip()
+            
+            # Aplicar o bloco
+            result = self._apply_block(update_type, target_pattern, update_code, i+1)
+            if result:
+                successful_blocks += 1
+        
+        print(f"\nResultado: {successful_blocks} de {len(blocks)} blocos aplicados com sucesso")
+        
+        # Criar backup após esta atualização
+        backup_file = self._create_backup(os.path.basename(update_file))
+        
+        # Salvar o código atualizado
+        with open(self.output_file, 'w', encoding='utf-8') as f:
+            f.write(self.code_content)
+        
+        print(f"Código atualizado salvo em: {self.output_file}")
+        return successful_blocks, len(blocks)
+    
+    def _apply_block(self, update_type, target_pattern, update_code, block_num):
+        """Aplica um bloco individual de atualização"""
+        print(f"\nProcessando Bloco {block_num}:")
+        print(f"  Tipo: {update_type}")
+        print(f"  Alvo: {target_pattern}")
+        
+        # Encontrar o alvo no código
+        if update_type == "ADIÇÃO":
+            # Para adição, precisamos encontrar o ponto de inserção
+            if target_pattern in self.code_content:
+                # Decide se adiciona antes ou depois do padrão alvo
+                if update_code.strip().startswith('# POSIÇÃO: ANTES'):
+                    update_code = update_code.replace('# POSIÇÃO: ANTES', '').strip()
+                    self.code_content = self.code_content.replace(
+                        target_pattern, 
+                        update_code + '\n\n' + target_pattern
+                    )
+                else:
+                    # Padrão é adicionar depois
+                    self.code_content = self.code_content.replace(
+                        target_pattern, 
+                        target_pattern + '\n\n' + update_code
+                    )
+                print("  Status: Adicionado com sucesso")
+                return True
+            else:
+                print(f"  Status: FALHA - Padrão alvo não encontrado")
+                return False
+                
+        elif update_type == "SUBSTITUIÇÃO":
+            # Para substituição, precisamos de um padrão de início e fim
+            try:
+                # Extrair padrões de início e fim
+                match = re.search(r'# INÍCIO: (.+?)\n# FIM: (.+)', target_pattern, re.DOTALL)
+                if match:
+                    start_pattern = match.group(1).strip()
+                    end_pattern = match.group(2).strip()
+                    
+                    # Encontrar a seção para substituir
+                    start_idx = self.code_content.find(start_pattern)
+                    
+                    if start_idx == -1:
+                        print(f"  Status: FALHA - Padrão de início não encontrado")
+                        return False
+                    
+                    # Considerar o fim do padrão de início como o início real da substituição
+                    start_idx = start_idx + len(start_pattern)
+                    
+                    # Encontrar o fim
+                    end_idx = self.code_content.find(end_pattern, start_idx)
+                    
+                    if end_idx == -1:
+                        print(f"  Status: FALHA - Padrão de fim não encontrado após o início")
+                        return False
+                    
+                    # Substituir o conteúdo
+                    original = self.code_content[start_idx:end_idx]
+                    self.code_content = (
+                        self.code_content[:start_idx] + 
+                        '\n\n' + update_code + '\n\n' + 
+                        self.code_content[end_idx:]
+                    )
+                    
+                    print("  Status: Substituído com sucesso")
+                    return True
+                else:
+                    # Substituição direta (todo o padrão alvo)
+                    if target_pattern in self.code_content:
+                        self.code_content = self.code_content.replace(target_pattern, update_code)
+                        print("  Status: Substituído com sucesso")
+                        return True
+                    else:
+                        print(f"  Status: FALHA - Padrão alvo não encontrado")
+                        return False
+            except Exception as e:
+                print(f"  Status: ERRO - {str(e)}")
+                return False
+                
+        elif update_type == "REMOÇÃO":
+            # Para remoção, precisamos encontrar e remover o padrão
+            if target_pattern in self.code_content:
+                self.code_content = self.code_content.replace(target_pattern, '')
+                print("  Status: Removido com sucesso")
+                return True
+            else:
+                print(f"  Status: FALHA - Padrão alvo não encontrado")
+                return False
+        
+        else:
+            print(f"  Status: FALHA - Tipo de atualização desconhecido: {update_type}")
+            return False
+    
+    def get_code_hash(self):
+        """Retorna o hash SHA-256 do código atual"""
+        return hashlib.sha256(self.code_content.encode('utf-8')).hexdigest()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Integrador de código para PSICOM')
+    parser.add_argument('base_file', help='Arquivo de código base')
+    parser.add_argument('update_files', nargs='+', help='Arquivos de atualização a serem aplicados')
+    parser.add_argument('--output', '-o', help='Arquivo de saída (opcional)')
+    
+    args = parser.parse_args()
+    
+    # Inicializar o integrador
+    integrator = CodeIntegrator(args.base_file, args.output)
+    
+    total_blocks = 0
+    total_success = 0
+    
+    # Aplicar cada arquivo de atualização em sequência
+    for update_file in args.update_files:
+        success, blocks = integrator.apply_update_file(update_file)
+        total_success += success
+        total_blocks += blocks
+    
+    print(f"\n{'='*70}")
+    print(f"Processo concluído. {total_success}/{total_blocks} blocos integrados com sucesso.")
+    print(f"Hash final do código: {integrator.get_code_hash()}")
+    print(f"Arquivo final: {integrator.output_file}")
+    print(f"{'='*70}")
